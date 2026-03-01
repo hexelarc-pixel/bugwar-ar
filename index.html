@@ -177,7 +177,6 @@ function tone(freq,type,vol,dur,delay=0,freqEnd=null) {
 }
 function sndBite()  { tone(900,'sawtooth',.35,.06,0,300); tone(250,'square',.15,.12,.04); }
 function sndDeath() { [350,240,160].forEach((f,i)=>tone(f,'sine',.3,.28,i*.14)); }
-function sndCalib() { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
 function sndWin()   { [523,659,784,1047].forEach((f,i)=>tone(f,'sine',.22,.32,i*.13)); }
 
 // ═══════════════════════════════════════════════════
@@ -254,19 +253,21 @@ function worldToScreen(wx,wy) {
 //  MULTIPLAYER (Gun.js)
 // ═══════════════════════════════════════════════════
 function initGun() {
-  gun=Gun(RELAYS); gamePath='bw_'+roomCode;
+  gun=Gun({peers:RELAYS, localStorage:false}); gamePath='bw_'+roomCode;
+  // map().on() ritorna dati per ogni chiave, incluso metadata '_' di Gun → lo filtriamo
+  // Rimosso il check ts dal listener: potrebbe scartare dati validi con clock sfasato
   gun.get(gamePath).get('players').map().on((d,id)=>{
-    if (!d||id===myId||Date.now()-(d.ts||0)>6000) return;
+    if (!d || id==='_' || id===myId) return;
     const wasAlive=others[id]?.alive;
-    others[id]={...d};
-    if (wasAlive&&!d.alive) checkWin();
+    others[id]={color:d.color, x:d.x, y:d.y, angle:d.angle, alive:d.alive, ts:d.ts};
+    if (wasAlive && d.alive===0) checkWin();
     refreshPlayerList();
   });
   gun.get(gamePath).get('bites').get(myId).on(d=>{
     if (!d?.by||!alive) return; kill();
   });
   setInterval(publishMe,PUB_MS);
-  setInterval(pruneStale,4000);
+  setInterval(pruneStale,5000);
   gameOn=true;
 }
 function publishMe() {
@@ -278,7 +279,7 @@ function publishMe() {
 function sendBite(tid) { gun.get(gamePath).get('bites').get(tid).put({by:myId,ts:Date.now()}); }
 function pruneStale() {
   const now=Date.now(); let ch=false;
-  for (const id in others) if (now-(others[id].ts||0)>6000) { delete others[id]; ch=true; }
+  for (const id in others) if (now-(others[id].ts||0)>10000) { delete others[id]; ch=true; }
   if (ch) { refreshPlayerList(); checkWin(); }
 }
 function refreshPlayerList() {
@@ -344,25 +345,19 @@ function checkAutoCollisions() {
 }
 
 // ═══════════════════════════════════════════════════
-//  DISEGNO ARENA
+//  DISEGNO ANCORA (puntino discreto)
 // ═══════════════════════════════════════════════════
 function drawArena(ctx) {
   if (!anchorS) return;
-  const a=anchorS;
-  // Cerchio campo tratteggiato
+  const {x,y,r}=anchorS;
   ctx.save();
-  ctx.strokeStyle='rgba(255,210,60,.55)'; ctx.lineWidth=2; ctx.setLineDash([12,7]);
-  ctx.beginPath(); ctx.arc(a.x,a.y,a.r*4,0,Math.PI*2); ctx.stroke();
-  ctx.setLineDash([]);
-  // Glow centrale sull'oggetto
-  const g=ctx.createRadialGradient(a.x,a.y,0,a.x,a.y,a.r*2.5);
-  g.addColorStop(0,'rgba(255,210,60,.18)'); g.addColorStop(1,'rgba(255,210,60,0)');
-  ctx.beginPath(); ctx.arc(a.x,a.y,a.r*2.5,0,Math.PI*2);
-  ctx.fillStyle=g; ctx.fill();
-  // Croce al centro
-  ctx.strokeStyle='rgba(255,210,60,.4)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(a.x-8,a.y); ctx.lineTo(a.x+8,a.y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(a.x,a.y-8); ctx.lineTo(a.x,a.y+8); ctx.stroke();
+  // Alone morbido
+  const g=ctx.createRadialGradient(x,y,0,x,y,r*3);
+  g.addColorStop(0,'rgba(60,140,255,.22)'); g.addColorStop(1,'rgba(60,140,255,0)');
+  ctx.beginPath(); ctx.arc(x,y,r*3,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+  // Puntino centrale
+  ctx.beginPath(); ctx.arc(x,y,Math.max(4,r*.4),0,Math.PI*2);
+  ctx.fillStyle='rgba(120,180,255,.7)'; ctx.fill();
   ctx.restore();
 }
 
@@ -447,7 +442,7 @@ function gameLoop() {
       anchorS=anchorS
         ? {x:anchorS.x+(det.x-anchorS.x)*LERP, y:anchorS.y+(det.y-anchorS.y)*LERP, r:anchorS.r+(det.r-anchorS.r)*LERP}
         : {...det};
-      if (!calibrated) { calibrated=true; sndCalib(); elCalib.style.display='none'; elHStatus.textContent='✅ Centro agganciato!'; }
+      if (!calibrated) { calibrated=true; elCalib.style.display='none'; elHStatus.textContent='✅ Pallina agganciata!'; }
     } else {
       if (calibrated) elCalib.style.display='block';
       if (!anchorS) elHStatus.textContent='🔍 Cerca oggetto…';
