@@ -238,12 +238,16 @@ function detectAnchor() {
 }
 
 // ═══════════════════════════════════════════════════
-//  COORDINATE: mondo ↔ schermo
+//  COORDINATE: mondo → schermo
+//  Se anchorS non è ancora rilevato usa il centro schermo
 // ═══════════════════════════════════════════════════
+function getEffectiveAnchor() {
+  return anchorS || {x:window.innerWidth/2, y:window.innerHeight*0.55, r:40};
+}
 function worldToScreen(wx,wy) {
-  if (!anchorS) return null;
-  const k=Math.max(.4,Math.min(3,anchorS.r/28));
-  return {x:anchorS.x+wx*k, y:anchorS.y+wy*k, k};
+  const a=getEffectiveAnchor();
+  const k=Math.max(.4,Math.min(3,a.r/28));
+  return {x:a.x+wx*k, y:a.y+wy*k, k};
 }
 
 // ═══════════════════════════════════════════════════
@@ -344,22 +348,21 @@ function checkAutoCollisions() {
 // ═══════════════════════════════════════════════════
 function drawArena(ctx) {
   if (!anchorS) return;
-  const k=Math.max(.4,Math.min(3,anchorS.r/28));
-  const screenR=ARENA_R*k;
+  const a=anchorS;
   // Cerchio campo tratteggiato
   ctx.save();
   ctx.strokeStyle='rgba(255,210,60,.55)'; ctx.lineWidth=2; ctx.setLineDash([12,7]);
-  ctx.beginPath(); ctx.arc(anchorS.x,anchorS.y,screenR,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(a.x,a.y,a.r*4,0,Math.PI*2); ctx.stroke();
   ctx.setLineDash([]);
   // Glow centrale sull'oggetto
-  const g=ctx.createRadialGradient(anchorS.x,anchorS.y,0,anchorS.x,anchorS.y,anchorS.r*2.5);
+  const g=ctx.createRadialGradient(a.x,a.y,0,a.x,a.y,a.r*2.5);
   g.addColorStop(0,'rgba(255,210,60,.18)'); g.addColorStop(1,'rgba(255,210,60,0)');
-  ctx.beginPath(); ctx.arc(anchorS.x,anchorS.y,anchorS.r*2.5,0,Math.PI*2);
+  ctx.beginPath(); ctx.arc(a.x,a.y,a.r*2.5,0,Math.PI*2);
   ctx.fillStyle=g; ctx.fill();
   // Croce al centro
   ctx.strokeStyle='rgba(255,210,60,.4)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(anchorS.x-8,anchorS.y); ctx.lineTo(anchorS.x+8,anchorS.y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(anchorS.x,anchorS.y-8); ctx.lineTo(anchorS.x,anchorS.y+8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(a.x-8,a.y); ctx.lineTo(a.x+8,a.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(a.x,a.y-8); ctx.lineTo(a.x,a.y+8); ctx.stroke();
   ctx.restore();
 }
 
@@ -468,10 +471,8 @@ function gameLoop() {
   // Rendering
   gCtx.clearRect(0,0,gc.width,gc.height);
   drawArena(gCtx);
-  if (anchorS) {
-    Object.values(others).forEach(p=>{ if(p.color) drawBug(gCtx,p.x||0,p.y||0,p.angle||0,p.color,false,false,!p.alive); });
-    drawBug(gCtx,myX,myY,myAngle,myColor,myMoving,true,!alive);
-  }
+  Object.values(others).forEach(p=>{ if(p.color) drawBug(gCtx,p.x||0,p.y||0,p.angle||0,p.color,false,false,!p.alive); });
+  drawBug(gCtx,myX,myY,myAngle,myColor,myMoving,true,!alive);
   checkAutoCollisions();
 
   requestAnimationFrame(gameLoop);
