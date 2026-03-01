@@ -166,6 +166,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 const RELAYS  = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
 const PUB_MS  = 90;
 const BITE_PX = 95;
+const FACING_DOT = 0.55; // cos(~57°): angolo entro cui la testa conta come "puntata"
 const SPD     = 2.8;
 const LERP    = 0.14;
 const COLORS  = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
@@ -192,7 +193,7 @@ let myX=(Math.random()-.5)*80, myY=(Math.random()-.5)*80;
 let myAngle=0, myMoving=false, alive=true, gameOn=false;
 const others={};
 let anchorS=null, wasAnchored=false;
-let biteTarget=null, prevBiteState=false;
+let biteTarget=null, prevBiteState=false, biteCooldown=0;
 let frameN=0;
 
 // ═══════════════════════════════════
@@ -368,14 +369,39 @@ document.addEventListener('keyup',  e=>keys[e.key]=false);
 //  MORSO
 // ═══════════════════════════════════
 function doBite() {
-  if (!alive||!biteTarget||!gameOn) return;
-  sendBite(biteTarget); sndBite(); flash('😈 HAI MORSO!',1200);
+  if (!alive||!biteTarget||!gameOn||biteCooldown>0) return;
+  sendBite(biteTarget); sndBite(); flash('😈 HAI MORSO!',1200); biteCooldown=90;
 }
 function kill() {
   if (!alive) return;
   alive=false; sndDeath();
   elDead.style.display='flex';
   publishMe(); checkWin();
+}
+
+// ═══════════════════════════════════
+//  COLLISIONE AUTOMATICA DIREZIONALE
+//  - testa punta al nemico → morso automatico
+//  - entrambi si puntano a vicenda → muoiono entrambi (head-on)
+// ═══════════════════════════════════
+function checkAutoCollisions() {
+  if (biteCooldown>0) { biteCooldown--; return; }
+  if (!alive||!gameOn||!anchorS) return;
+  const ms=worldToScreen(myX,myY); if (!ms) return;
+  // Vettore "testa" del mio insetto nello spazio canvas
+  const myFX=Math.sin(myAngle), myFY=-Math.cos(myAngle);
+  Object.entries(others).forEach(([id,p])=>{
+    if (!p.alive||p.color===myColor) return;
+    const ps=worldToScreen(p.x||0,p.y||0); if (!ps) return;
+    const dist=Math.hypot(ms.x-ps.x,ms.y-ps.y);
+    if (dist>=BITE_PX) return;
+    // Direzione normalizzata me→nemico
+    const dx=(ps.x-ms.x)/dist, dy=(ps.y-ms.y)/dist;
+    // La mia testa punta verso il nemico?
+    if (myFX*dx+myFY*dy > FACING_DOT) {
+      sendBite(id); sndBite(); flash('😈 MORSO!',1200); biteCooldown=90;
+    }
+  });
 }
 
 // ═══════════════════════════════════
@@ -526,6 +552,9 @@ function gameLoop() {
       }
     }
   }
+
+  // Collisione direzionale automatica
+  checkAutoCollisions();
 
   // Aggiorna pulsante morso solo se cambia stato
   const showBite=!!(biteTarget&&alive);
