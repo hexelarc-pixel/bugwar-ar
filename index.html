@@ -29,7 +29,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 .cbtn[data-c="red"]    { background:#ff2222; box-shadow:0 0 18px #ff222288; }
 .cbtn[data-c="green"]  { background:#22cc44; box-shadow:0 0 18px #22cc4488; }
 .cbtn[data-c="purple"] { background:#aa22ff; box-shadow:0 0 18px #aa22ff88; }
-
 #roomIn {
   background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3);
   color:#fff; padding:13px 22px; border-radius:30px; font-size:1.1em;
@@ -50,7 +49,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 #vid { width:100%; height:100%; object-fit:cover; display:block; }
 #gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
-/* HUD top */
+/* HUD */
 #hud {
   position:absolute; top:0; left:0; right:0;
   display:flex; justify-content:space-between; align-items:flex-start;
@@ -76,11 +75,8 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 }
 #bigMsg.on { opacity:1; }
 
-/* Players sidebar */
-#plist {
-  position:absolute; top:68px; right:10px;
-  display:flex; flex-direction:column; gap:4px;
-}
+/* Players list */
+#plist { position:absolute; top:68px; right:10px; display:flex; flex-direction:column; gap:4px; }
 .pdot {
   display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.55);
   padding:3px 9px; border-radius:12px; font-size:11px; color:#fff;
@@ -88,48 +84,36 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 .pdot .d { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 
 /* Joystick */
-#joy {
-  position:absolute; bottom:24px; left:20px;
-  width:120px; height:120px;
-}
+#joy { position:absolute; bottom:24px; left:20px; width:120px; height:120px; }
 #joyB {
   width:120px; height:120px; border-radius:50%;
-  background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.28);
-  position:relative;
+  background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.28); position:relative;
 }
 #joyK {
   width:52px; height:52px; border-radius:50%;
   background:rgba(255,255,255,.55); border:2px solid rgba(255,255,255,.85);
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  pointer-events:none;
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
 }
 
 /* Bite button */
 #biteBtn {
-  position:absolute; bottom:30px; right:20px;
-  width:88px; height:88px; border-radius:50%;
-  background:rgba(220,20,20,.88); border:3px solid #ff6666;
-  color:#fff; font-size:2em; cursor:pointer;
-  align-items:center; justify-content:center;
-  display:none; box-shadow:0 0 22px rgba(255,0,0,.65);
-  animation:pls .5s infinite alternate;
+  position:absolute; bottom:30px; right:20px; width:88px; height:88px; border-radius:50%;
+  background:rgba(220,20,20,.88); border:3px solid #ff6666; color:#fff; font-size:2em;
+  cursor:pointer; align-items:center; justify-content:center;
+  display:none; box-shadow:0 0 22px rgba(255,0,0,.65); animation:pls .5s infinite alternate;
 }
 @keyframes pls { from{transform:scale(1)} to{transform:scale(1.1)} }
 
-/* Dead overlay */
+/* Overlays */
 #dead {
   position:absolute; inset:0; background:rgba(180,0,0,.45);
-  display:none; flex-direction:column; align-items:center; justify-content:center;
-  gap:12px; color:#fff;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff;
 }
 #dead h2 { font-size:2.4em; }
 #dead p  { font-size:1em; color:#faa; }
-
-/* Win overlay */
 #win {
   position:absolute; inset:0; background:rgba(0,0,0,.6);
-  display:none; flex-direction:column; align-items:center; justify-content:center;
-  gap:12px; color:#fff;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff;
 }
 #win h2 { font-size:2.6em; }
 </style>
@@ -140,7 +124,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 <div id="setup">
   <h1>🐛 BugWar</h1>
   <p class="sub">Realtà Aumentata · Multiplayer<br>Punta sulla pallina blu e combatti!</p>
-
   <p style="color:#bbb;font-size:.9em;margin-bottom:4px">Scegli il tuo insetto:</p>
   <div class="colors">
     <div class="cbtn" data-c="blue"   data-label="Blu"    onclick="pickColor(this)"></div>
@@ -148,7 +131,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
     <div class="cbtn" data-c="green"  data-label="Verde"  onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="purple" data-label="Viola"  onclick="pickColor(this)"></div>
   </div>
-
   <input id="roomIn" type="text" maxlength="8" placeholder="Codice stanza" autocomplete="off" spellcheck="false">
   <button id="joinBtn" onclick="join()">ENTRA NEL GIOCO 🐛</button>
   <div class="err" id="err"></div>
@@ -163,26 +145,17 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 <div id="game">
   <video id="vid" autoplay playsinline muted></video>
   <canvas id="gc"></canvas>
-
   <div id="hud">
-    <div id="hudL">
-      <div>Stanza: <b id="hRoom">-</b></div>
-      <div>Giocatori: <b id="hPl">1</b></div>
-    </div>
-    <div id="hudR" style="text-align:right">
-      <div>Il tuo bug: <b id="hColor">-</b></div>
-      <div id="hStatus">🔍 Cerca pallina blu…</div>
-    </div>
+    <div>Stanza: <b id="hRoom">-</b><br>Giocatori: <b id="hPl">1</b></div>
+    <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca pallina…</span></div>
   </div>
-
   <div id="plist"></div>
   <div id="calib">📷 Punta la fotocamera sulla <b>pallina blu</b></div>
   <div id="bigMsg"></div>
-
   <div id="joy"><div id="joyB"><div id="joyK"></div></div></div>
   <div id="biteBtn" onclick="doBite()">🦷</div>
-  <div id="dead" ><h2>💀 SEI MORTO</h2><p>Hai subito un morso!</p></div>
-  <div id="win"  ><h2>🏆 VITTORIA!</h2><p id="winMsg"></p></div>
+  <div id="dead"><h2>�� SEI MORTO</h2><p>Hai subito un morso!</p></div>
+  <div id="win"><h2>🏆 VITTORIA!</h2><p id="winMsg"></p></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
@@ -190,318 +163,296 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 // ═══════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════
-const RELAYS    = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
-const PUB_MS    = 90;    // publish rate
-const BITE_PX   = 95;    // screen px for bite range
-const SPD       = 2.8;   // world units/frame
-const COLORS    = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
+const RELAYS  = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
+const PUB_MS  = 90;
+const BITE_PX = 95;
+const SPD     = 2.8;
+const LERP    = 0.14;
+const COLORS  = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
+
+// ═══════════════════════════════════
+//  DOM CACHE
+// ═══════════════════════════════════
+const $ = id => document.getElementById(id);
+const elSetup=$('setup'), elGame=$('game'), elHRoom=$('hRoom'), elHPl=$('hPl'),
+      elHColor=$('hColor'), elHStatus=$('hStatus'), elCalib=$('calib'),
+      elBigMsg=$('bigMsg'), elPlist=$('plist'), elBiteBtn=$('biteBtn'),
+      elDead=$('dead'), elWin=$('win'), elWinMsg=$('winMsg');
+const vid=$('vid'), gc=$('gc'), gCtx=gc.getContext('2d');
+const detC=document.createElement('canvas');
+const detX=detC.getContext('2d',{willReadFrequently:true});
+const joyB=$('joyB'), joyK=$('joyK');
 
 // ═══════════════════════════════════
 //  STATE
 // ═══════════════════════════════════
-const myId = 'b' + Math.random().toString(36).slice(2,9);
-let myColor = 'blue', roomCode = '', gun = null, gamePath = '';
-let myX = (Math.random()-.5)*80, myY = (Math.random()-.5)*80;
-let myAngle = 0, myMoving = false, alive = true, gameOn = false;
-const others  = {};   // id → {color,x,y,angle,alive,ts}
-let anchor = null, anchorS = null;   // detected / smoothed ball
-let biteTarget = null;
-let frameN = 0;
+const myId = 'b'+Math.random().toString(36).slice(2,9);
+let myColor='blue', roomCode='', gun=null, gamePath='';
+let myX=(Math.random()-.5)*80, myY=(Math.random()-.5)*80;
+let myAngle=0, myMoving=false, alive=true, gameOn=false;
+const others={};
+let anchorS=null, wasAnchored=false;
+let biteTarget=null, prevBiteState=false;
+let frameN=0;
+
+// ═══════════════════════════════════
+//  AUDIO (Web Audio API, no files)
+// ═══════════════════════════════════
+let audioCtx=null;
+function ac() {
+  if (!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(freq, type, vol, dur, delay=0, freqEnd=null) {
+  const ctx=ac(), t0=ctx.currentTime+delay;
+  const osc=ctx.createOscillator(), gain=ctx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,t0);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t0+dur);
+  gain.gain.setValueAtTime(vol,t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0+dur+0.01);
+}
+// Morso: scatto secco discendente
+function sndBite()   { tone(900,'sawtooth',.35,.06,0,300); tone(250,'square',.15,.12,.04); }
+// Morte: tre toni gravi a cascata
+function sndDeath()  { [350,240,160].forEach((f,i)=>tone(f,'sine',.3,.28,i*.14)); }
+// Nemico vicino: tic breve (throttled)
+function sndRange()  { tone(520,'square',.05,.07); }
+// Pallina agganciata: doppio beep positivo
+function sndAnchor() { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
+// Vittoria: scala ascendente
+function sndWin()    { [523,659,784,1047].forEach((f,i)=>tone(f,'sine',.22,.32,i*.13)); }
+
+let lastRangeSnd=0;
+function maybeRangeSnd() {
+  const now=Date.now();
+  if (now-lastRangeSnd>1800) { sndRange(); lastRangeSnd=now; }
+}
 
 // ═══════════════════════════════════
 //  SETUP
 // ═══════════════════════════════════
 function pickColor(el) {
   document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');
-  myColor = el.dataset.c;
+  el.classList.add('sel'); myColor=el.dataset.c;
 }
 document.querySelector('.cbtn[data-c="blue"]').click();
 
 function join() {
-  const code = document.getElementById('roomIn').value.trim().toUpperCase();
-  const err  = document.getElementById('err');
-  if (code.length < 3) { err.textContent='Codice troppo corto (min 3 caratteri)'; return; }
-  err.textContent = '';
-  roomCode = code;
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('game').style.display  = 'block';
-  document.getElementById('hRoom').textContent   = roomCode;
-  document.getElementById('hColor').innerHTML    = `<span style="color:${COLORS[myColor]}">${myColor}</span>`;
-  startCamera();
-  initGun();
+  const code=$('roomIn').value.trim().toUpperCase();
+  const err=$('err');
+  if (code.length<3) { err.textContent='Codice troppo corto (min 3 caratteri)'; return; }
+  err.textContent=''; roomCode=code;
+  ac().resume(); // sblocca AudioContext su mobile
+  elSetup.style.display='none'; elGame.style.display='block';
+  elHRoom.textContent=roomCode;
+  elHColor.innerHTML=`<span style="color:${COLORS[myColor]}">${myColor}</span>`;
+  startCamera(); initGun();
 }
 
 // ═══════════════════════════════════
-//  CAMERA + BLUE BALL DETECTION
+//  CAMERA + RILEVAMENTO PALLINA
 // ═══════════════════════════════════
-const vid   = document.getElementById('vid');
-const gc    = document.getElementById('gc');
-const gCtx  = gc.getContext('2d');
-const detC  = document.createElement('canvas');
-const detX  = detC.getContext('2d', { willReadFrequently:true });
-
-function startCamera() {
-  const constraints = { video:{ facingMode:'environment', width:640, height:480 } };
-  navigator.mediaDevices.getUserMedia(constraints)
-    .catch(() => navigator.mediaDevices.getUserMedia({ video:true }))
-    .then(s => {
-      vid.srcObject = s;
-      vid.onloadedmetadata = () => {
-        detC.width = vid.videoWidth; detC.height = vid.videoHeight;
-        resize(); gameLoop();
-      };
-    })
-    .catch(e => alert('Webcam non disponibile: ' + e.message));
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(
+      {video:{facingMode:'environment',width:640,height:480}}
+    ).catch(() => navigator.mediaDevices.getUserMedia({video:true}));
+    vid.srcObject=stream;
+    vid.onloadedmetadata=()=>{ detC.width=vid.videoWidth; detC.height=vid.videoHeight; resize(); gameLoop(); };
+  } catch(e) { alert('Webcam non disponibile: '+e.message); }
 }
 
-function resize() {
-  gc.width  = window.innerWidth;
-  gc.height = window.innerHeight;
-}
+function resize() { gc.width=window.innerWidth; gc.height=window.innerHeight; }
 window.addEventListener('resize', resize);
 
 function detectBall() {
-  detX.drawImage(vid, 0, 0, detC.width, detC.height);
-  const img = detX.getImageData(0, 0, detC.width, detC.height).data;
-  let sx=0, sy=0, n=0, x0=1e9,x1=-1,y0=1e9,y1=-1;
-  for (let y=0; y<detC.height; y+=3) for (let x=0; x<detC.width; x+=3) {
-    const i=(y*detC.width+x)*4, r=img[i], g=img[i+1], b=img[i+2];
-    if (b>=115 && r<=115 && g<=125 && (b-r)>=38 && (b-g)>=15) {
+  detX.drawImage(vid,0,0,detC.width,detC.height);
+  const img=detX.getImageData(0,0,detC.width,detC.height).data;
+  let sx=0,sy=0,n=0,x0=1e9,x1=-1,y0=1e9,y1=-1;
+  for (let y=0;y<detC.height;y+=3) for (let x=0;x<detC.width;x+=3) {
+    const i=(y*detC.width+x)*4,r=img[i],g=img[i+1],b=img[i+2];
+    if (b>=115&&r<=115&&g<=125&&(b-r)>=38&&(b-g)>=15) {
       sx+=x; sy+=y; n++;
       if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
     }
   }
-  if (n < 50) return null;
+  if (n<50) return null;
   const cx=sx/n, cy=sy/n, rad=Math.max((x1-x0)/2,(y1-y0)/2,8);
   const rect=vid.getBoundingClientRect();
   const kx=rect.width/detC.width, ky=rect.height/detC.height;
-  return { x: rect.left+cx*kx, y: rect.top+cy*ky, r: rad*kx };
+  return {x:rect.left+cx*kx, y:rect.top+cy*ky, r:rad*kx};
 }
 
 // ═══════════════════════════════════
-//  GUN.JS MULTIPLAYER
+//  MULTIPLAYER (Gun.js)
 // ═══════════════════════════════════
 function initGun() {
-  gun = Gun(RELAYS);
-  gamePath = 'bw_' + roomCode;
-
-  // Listen to all players
-  gun.get(gamePath).get('players').map().on((d, id) => {
-    if (!d || id===myId) return;
-    if (Date.now()-(d.ts||0) > 6000) return;
-    const wasAlive = others[id]?.alive;
-    others[id] = { ...d };
-    if (wasAlive && !d.alive) checkWin();
+  gun=Gun(RELAYS); gamePath='bw_'+roomCode;
+  gun.get(gamePath).get('players').map().on((d,id)=>{
+    if (!d||id===myId) return;
+    if (Date.now()-(d.ts||0)>6000) return;
+    const wasAlive=others[id]?.alive;
+    others[id]={...d};
+    if (wasAlive&&!d.alive) checkWin();
     refreshPlayerList();
   });
-
-  // Listen for bites targeting me
-  gun.get(gamePath).get('bites').get(myId).on(d => {
-    if (!d?.by || !alive) return;
-    kill(d.by);
+  gun.get(gamePath).get('bites').get(myId).on(d=>{
+    if (!d?.by||!alive) return;
+    kill();
   });
-
   setInterval(publishMe, PUB_MS);
   setInterval(pruneStale, 4000);
-  gameOn = true;
+  gameOn=true;
 }
 
 function publishMe() {
   if (!gun) return;
-  gun.get(gamePath).get('players').get(myId).put({
-    id:myId, color:myColor, x:myX, y:myY, angle:myAngle,
-    alive:alive?1:0, ts:Date.now()
-  });
+  gun.get(gamePath).get('players').get(myId).put(
+    {id:myId,color:myColor,x:myX,y:myY,angle:myAngle,alive:alive?1:0,ts:Date.now()}
+  );
 }
-
 function sendBite(targetId) {
-  gun.get(gamePath).get('bites').get(targetId).put({ by:myId, ts:Date.now() });
+  gun.get(gamePath).get('bites').get(targetId).put({by:myId,ts:Date.now()});
 }
-
 function pruneStale() {
-  const now = Date.now();
-  let changed = false;
+  const now=Date.now(); let changed=false;
   for (const id in others) if (now-(others[id].ts||0)>6000) { delete others[id]; changed=true; }
-  if (changed) refreshPlayerList();
+  if (changed) { refreshPlayerList(); checkWin(); }
 }
-
 function refreshPlayerList() {
-  const el = document.getElementById('plist');
-  el.innerHTML = '';
-  const all = [
-    { color:myColor, alive, me:true },
-    ...Object.values(others)
-  ];
-  document.getElementById('hPl').textContent = all.filter(p=>p.alive).length;
-  all.forEach(p => {
-    const d = document.createElement('div');
-    d.className = 'playerDot pdot';
-    const ally = p.color===myColor;
-    const label = p.me ? 'Tu' : (ally ? '🤝'+p.color : '⚔️'+p.color);
-    d.innerHTML = `<div class="d" style="background:${COLORS[p.color]||'#fff'}"></div>
-      <span style="color:${ally?'#88ff99':'#ff8888'}">${label}${p.alive?'':' 💀'}</span>`;
-    el.appendChild(d);
+  elPlist.innerHTML='';
+  const all=[{color:myColor,alive,me:true},...Object.values(others)];
+  elHPl.textContent=all.filter(p=>p.alive).length;
+  all.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='pdot';
+    const ally=p.color===myColor;
+    const label=p.me?'Tu':(ally?'🤝'+p.color:'⚔️'+p.color);
+    d.innerHTML=`<div class="d" style="background:${COLORS[p.color]||'#fff'}"></div><span style="color:${ally?'#88ff99':'#ff8888'}">${label}${p.alive?'':' 💀'}</span>`;
+    elPlist.appendChild(d);
   });
 }
-
 function checkWin() {
   if (!gameOn) return;
-  const enemies = Object.values(others).filter(p=>p.color!==myColor && p.alive);
-  if (enemies.length===0 && Object.keys(others).length>0) {
-    document.getElementById('win').style.display='flex';
-    document.getElementById('winMsg').textContent = alive ? 'La tua squadra ha eliminato tutti!' : 'La tua squadra ha vinto, ma sei caduto!';
-    gameOn = false;
+  const enemies=Object.values(others).filter(p=>p.color!==myColor&&p.alive);
+  if (enemies.length===0&&Object.keys(others).length>0) {
+    elWin.style.display='flex';
+    elWinMsg.textContent=alive?'La tua squadra ha eliminato tutti!':'La tua squadra ha vinto, ma sei caduto!';
+    gameOn=false; sndWin();
   }
 }
 
 // ═══════════════════════════════════
 //  JOYSTICK
 // ═══════════════════════════════════
-const joyB = document.getElementById('joyB');
-const joyK = document.getElementById('joyK');
-const JR   = 34;
-let jdx=0, jdy=0;
-
+const JR=34; let jdx=0, jdy=0;
 function joyMove(e) {
-  const t  = e.touches?e.touches[0]:e;
-  const rc = joyB.getBoundingClientRect();
-  let dx = t.clientX-(rc.left+rc.width/2);
-  let dy = t.clientY-(rc.top+rc.height/2);
-  const d = Math.hypot(dx,dy);
+  const t=e.touches?e.touches[0]:e;
+  const rc=joyB.getBoundingClientRect();
+  let dx=t.clientX-(rc.left+rc.width/2), dy=t.clientY-(rc.top+rc.height/2);
+  const d=Math.hypot(dx,dy);
   if (d>JR) { dx=dx/d*JR; dy=dy/d*JR; }
-  joyK.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  joyK.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
   jdx=dx/JR; jdy=dy/JR;
 }
-joyB.addEventListener('touchstart', e=>{joyMove(e);e.preventDefault();},{passive:false});
-joyB.addEventListener('touchmove',  e=>{joyMove(e);e.preventDefault();},{passive:false});
-joyB.addEventListener('touchend',   ()=>{
-  jdx=0;jdy=0; joyK.style.transform='translate(-50%,-50%)';
-});
-
+joyB.addEventListener('touchstart',e=>{joyMove(e);e.preventDefault();},{passive:false});
+joyB.addEventListener('touchmove', e=>{joyMove(e);e.preventDefault();},{passive:false});
+joyB.addEventListener('touchend',  ()=>{ jdx=0;jdy=0; joyK.style.transform='translate(-50%,-50%)'; });
 const keys={};
-document.addEventListener('keydown', e=>{keys[e.key]=true; if(e.key===' ')doBite();});
-document.addEventListener('keyup',   e=>keys[e.key]=false);
+document.addEventListener('keydown',e=>{keys[e.key]=true; if(e.key===' ')doBite();});
+document.addEventListener('keyup',  e=>keys[e.key]=false);
 
 // ═══════════════════════════════════
-//  BITE
+//  MORSO
 // ═══════════════════════════════════
 function doBite() {
   if (!alive||!biteTarget||!gameOn) return;
-  sendBite(biteTarget);
-  flash('😈 HAI MORSO!', 1200);
+  sendBite(biteTarget); sndBite(); flash('😈 HAI MORSO!',1200);
 }
-
-function kill(by) {
+function kill() {
   if (!alive) return;
-  alive=false;
-  document.getElementById('dead').style.display='flex';
-  publishMe();
-  checkWin();
+  alive=false; sndDeath();
+  elDead.style.display='flex';
+  publishMe(); checkWin();
 }
 
 // ═══════════════════════════════════
-//  BUG DRAWING
+//  DISEGNO INSETTI
 // ═══════════════════════════════════
-function worldToScreen(wx, wy) {
+function worldToScreen(wx,wy) {
   if (!anchorS) return null;
-  const k = Math.max(.4, Math.min(2.8, anchorS.r/28));
-  return { x: anchorS.x + wx*k, y: anchorS.y + wy*k, k };
+  const k=Math.max(.4,Math.min(2.8,anchorS.r/28));
+  return {x:anchorS.x+wx*k, y:anchorS.y+wy*k, k};
 }
 
-function drawBug(ctx, wx, wy, ang, col, moving, isMe, dead) {
-  const sp = worldToScreen(wx, wy);
-  if (!sp) return;
-  const { x, y, k } = sp;
-  const s  = k * (isMe ? 1.15 : 0.95);
-  const c  = COLORS[col]||'#fff';
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(ang);
-  ctx.globalAlpha = dead ? 0.3 : 1;
-
-  // Floor shadow
+function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
+  const sp=worldToScreen(wx,wy); if (!sp) return;
+  const {x,y,k}=sp, s=k*(isMe?1.15:.95), c=COLORS[col]||'#fff';
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
+  ctx.globalAlpha=dead?.3:1;
+  // Ombra
   ctx.save(); ctx.scale(1,.35);
-  ctx.beginPath(); ctx.ellipse(0, 10*s, 15*s, 9*s, 0, 0, Math.PI*2);
+  ctx.beginPath(); ctx.ellipse(0,10*s,15*s,9*s,0,0,Math.PI*2);
   ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fill(); ctx.restore();
-
-  // Legs
-  const la = moving ? Math.sin(frameN*.32)*.45 : 0;
+  // Zampe
+  const la=moving?Math.sin(frameN*.32)*.45:0;
   ctx.strokeStyle=c; ctx.lineWidth=2*s; ctx.lineCap='round';
-  for (let side=-1; side<=1; side+=2) {
-    for (let i=0; i<3; i++) {
-      const ly=(-9+i*8)*s, ph=(i%2===0?1:-1)*side*la;
-      ctx.beginPath();
-      ctx.moveTo(side*5*s, ly);
-      ctx.quadraticCurveTo(side*11*s, ly, side*(15+ph*4)*s, ly+8*s+Math.abs(ph)*4*s);
-      ctx.stroke();
-    }
+  for (let side=-1;side<=1;side+=2) for (let i=0;i<3;i++) {
+    const ly=(-9+i*8)*s, ph=(i%2===0?1:-1)*side*la;
+    ctx.beginPath(); ctx.moveTo(side*5*s,ly);
+    ctx.quadraticCurveTo(side*11*s,ly, side*(15+ph*4)*s, ly+8*s+Math.abs(ph)*4*s);
+    ctx.stroke();
   }
-
-  // Abdomen
-  ctx.beginPath(); ctx.ellipse(0, 5*s, 8*s, 12*s, 0, 0, Math.PI*2);
+  // Addome
+  ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,0,Math.PI*2);
   ctx.fillStyle=c; ctx.fill();
   ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
-  // Stripes
-  for (let i=-1; i<=1; i++) {
-    ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,(i*.3)-.05,(i*.3)+.15);
+  for (let i=-1;i<=1;i++) {
+    ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,i*.3-.05,i*.3+.15);
     ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=2*s; ctx.stroke();
   }
-
-  // Head
+  // Testa
   ctx.beginPath(); ctx.ellipse(0,-8*s,7*s,7*s,0,0,Math.PI*2);
-  ctx.fillStyle=c; ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
-
-  // Eyes
-  [-3,3].forEach(ex_=>{
-    ctx.beginPath(); ctx.arc(ex_*s,-9*s,2.6*s,0,Math.PI*2);
-    ctx.fillStyle='#fff'; ctx.fill();
-    ctx.beginPath(); ctx.arc(ex_*s,-9*s,1.2*s,0,Math.PI*2);
-    ctx.fillStyle='#111'; ctx.fill();
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
+  // Occhi
+  [-3,3].forEach(ex=>{
+    ctx.beginPath(); ctx.arc(ex*s,-9*s,2.6*s,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(ex*s,-9*s,1.2*s,0,Math.PI*2); ctx.fillStyle='#111'; ctx.fill();
   });
   if (dead) {
     ctx.strokeStyle='#ff3333'; ctx.lineWidth=1.5*s;
-    [-3,3].forEach(ex_=>{
-      ctx.beginPath(); ctx.moveTo((ex_-2)*s,-11*s); ctx.lineTo((ex_+2)*s,-7*s); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo((ex_+2)*s,-11*s); ctx.lineTo((ex_-2)*s,-7*s); ctx.stroke();
+    [-3,3].forEach(ex=>{
+      ctx.beginPath(); ctx.moveTo((ex-2)*s,-11*s); ctx.lineTo((ex+2)*s,-7*s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo((ex+2)*s,-11*s); ctx.lineTo((ex-2)*s,-7*s); ctx.stroke();
     });
   }
-
-  // Antennae
-  const aw = moving ? Math.sin(frameN*.18)*5 : 2;
-  ctx.strokeStyle=c; ctx.lineWidth=1.5*s; ctx.lineCap='round';
+  // Antenne
+  const aw=moving?Math.sin(frameN*.18)*5:2;
+  ctx.strokeStyle=c; ctx.lineWidth=1.5*s;
   [[-3,-10+aw],[3,10-aw]].forEach(([bx,tx])=>{
     ctx.beginPath(); ctx.moveTo(bx*s,-14*s);
     ctx.quadraticCurveTo(bx*s-2*s,-20*s,tx*s,-27*s); ctx.stroke();
-    ctx.beginPath(); ctx.arc(tx*s,-27*s,2.4*s,0,Math.PI*2);
-    ctx.fillStyle=c; ctx.fill();
+    ctx.beginPath(); ctx.arc(tx*s,-27*s,2.4*s,0,Math.PI*2); ctx.fillStyle=c; ctx.fill();
   });
-
-  // Name tag
+  // Etichetta
   if (isMe) {
-    ctx.rotate(-ang);
-    ctx.font = `bold ${Math.round(11*k)}px sans-serif`;
-    ctx.textAlign='center';
+    ctx.rotate(-ang); ctx.font=`bold ${Math.round(11*k)}px sans-serif`; ctx.textAlign='center';
     ctx.fillStyle='#fff'; ctx.shadowColor='#000'; ctx.shadowBlur=4;
-    ctx.fillText('TU', 0, -34*s);
-    ctx.shadowBlur=0;
+    ctx.fillText('TU',0,-34*s); ctx.shadowBlur=0;
   }
-
-  ctx.globalAlpha=1;
-  ctx.restore();
+  ctx.globalAlpha=1; ctx.restore();
 }
 
 // ═══════════════════════════════════
-//  MISC UI
+//  FLASH MESSAGGIO
 // ═══════════════════════════════════
 let msgTimer=null;
-function flash(txt, ms=1600) {
-  const el=document.getElementById('bigMsg');
-  el.textContent=txt; el.classList.add('on');
+function flash(txt,ms=1600) {
+  elBigMsg.textContent=txt; elBigMsg.classList.add('on');
   clearTimeout(msgTimer);
-  msgTimer=setTimeout(()=>el.classList.remove('on'), ms);
+  msgTimer=setTimeout(()=>elBigMsg.classList.remove('on'),ms);
 }
 
 // ═══════════════════════════════════
@@ -509,88 +460,81 @@ function flash(txt, ms=1600) {
 // ═══════════════════════════════════
 function gameLoop() {
   frameN++;
-
-  // Canvas size
   if (gc.width!==window.innerWidth||gc.height!==window.innerHeight) resize();
 
-  // Ball detection
-  const det = detectBall();
-  if (det) {
-    anchor = det;
-    anchorS = anchorS
-      ? { x:anchorS.x+(det.x-anchorS.x)*.14, y:anchorS.y+(det.y-anchorS.y)*.14, r:anchorS.r+(det.r-anchorS.r)*.14 }
-      : { ...det };
-    document.getElementById('calib').style.display='none';
-    document.getElementById('hStatus').textContent='✅ Pallina agganciata!';
-  } else {
-    document.getElementById('calib').style.display='block';
-    if (!anchorS) document.getElementById('hStatus').textContent='🔍 Cerca pallina blu…';
+  // Rilevamento pallina (ogni 2 frame per performance)
+  if (frameN%2===0) {
+    const det=detectBall();
+    if (det) {
+      anchorS=anchorS
+        ? {x:anchorS.x+(det.x-anchorS.x)*LERP, y:anchorS.y+(det.y-anchorS.y)*LERP, r:anchorS.r+(det.r-anchorS.r)*LERP}
+        : {...det};
+      if (!wasAnchored) { sndAnchor(); elCalib.style.display='none'; elHStatus.textContent='✅ Pallina agganciata!'; }
+      wasAnchored=true;
+    } else {
+      if (wasAnchored) elCalib.style.display='block';
+      if (!anchorS) elHStatus.textContent='🔍 Cerca pallina blu…';
+      wasAnchored=false;
+    }
   }
 
-  // Move my bug
-  if (alive && gameOn) {
+  // Movimento
+  if (alive&&gameOn) {
     let dx=jdx, dy=jdy;
     if (keys['ArrowLeft']||keys['a']) dx-=1;
     if (keys['ArrowRight']||keys['d']) dx+=1;
     if (keys['ArrowUp']||keys['w']) dy-=1;
     if (keys['ArrowDown']||keys['s']) dy+=1;
     const len=Math.hypot(dx,dy);
-    if (len>.01) {
-      myX+=dx/len*SPD; myY+=dy/len*SPD;
-      myAngle=Math.atan2(dx,-dy); myMoving=true;
-    } else myMoving=false;
+    if (len>.01) { myX+=dx/len*SPD; myY+=dy/len*SPD; myAngle=Math.atan2(dx,-dy); myMoving=true; }
+    else myMoving=false;
   }
 
-  // Render
+  // Rendering
   gCtx.clearRect(0,0,gc.width,gc.height);
-
   if (anchorS) {
-    // Glow under ball
+    // Glow pallina
     const g=gCtx.createRadialGradient(anchorS.x,anchorS.y,0,anchorS.x,anchorS.y,anchorS.r*2.2);
     g.addColorStop(0,'rgba(80,130,255,.22)'); g.addColorStop(1,'rgba(80,130,255,0)');
     gCtx.beginPath(); gCtx.arc(anchorS.x,anchorS.y,anchorS.r*2.2,0,Math.PI*2);
     gCtx.fillStyle=g; gCtx.fill();
-
-    // Draw others (enemies/allies)
-    Object.values(others).forEach(p => {
-      if (!p.color) return;
-      drawBug(gCtx, p.x||0, p.y||0, p.angle||0, p.color, false, false, !p.alive);
-    });
-
-    // Draw me (on top)
-    drawBug(gCtx, myX, myY, myAngle, myColor, myMoving, true, !alive);
-
-    // Bite proximity check
+    // Altri giocatori
+    Object.values(others).forEach(p=>{ if(p.color) drawBug(gCtx,p.x||0,p.y||0,p.angle||0,p.color,false,false,!p.alive); });
+    // Mio insetto
+    drawBug(gCtx,myX,myY,myAngle,myColor,myMoving,true,!alive);
+    // Controllo prossimità morso
     biteTarget=null;
-    if (alive && gameOn) {
+    if (alive&&gameOn) {
       const ms=worldToScreen(myX,myY);
       if (ms) {
+        let closestDist=BITE_PX;
         Object.entries(others).forEach(([id,p])=>{
-          if (!p.alive || p.color===myColor) return;
-          const ps=worldToScreen(p.x||0,p.y||0);
-          if (!ps) return;
+          if (!p.alive||p.color===myColor) return;
+          const ps=worldToScreen(p.x||0,p.y||0); if (!ps) return;
           const dist=Math.hypot(ms.x-ps.x,ms.y-ps.y);
-          if (dist<BITE_PX) {
-            biteTarget=id;
-            // Dashed line between insects
-            gCtx.save();
-            gCtx.strokeStyle='rgba(255,60,60,.7)'; gCtx.lineWidth=2;
-            gCtx.setLineDash([6,4]);
-            gCtx.beginPath(); gCtx.moveTo(ms.x,ms.y); gCtx.lineTo(ps.x,ps.y); gCtx.stroke();
-            gCtx.restore();
-            // Range indicator
-            gCtx.save();
-            gCtx.strokeStyle='rgba(255,60,60,.3)'; gCtx.lineWidth=1;
-            gCtx.setLineDash([3,6]);
-            gCtx.beginPath(); gCtx.arc(ms.x,ms.y,BITE_PX,0,Math.PI*2); gCtx.stroke();
-            gCtx.restore();
-          }
+          if (dist<closestDist) { closestDist=dist; biteTarget=id; }
         });
+        if (biteTarget) {
+          const ps=worldToScreen(others[biteTarget].x||0,others[biteTarget].y||0);
+          gCtx.save();
+          gCtx.strokeStyle='rgba(255,60,60,.7)'; gCtx.lineWidth=2; gCtx.setLineDash([6,4]);
+          gCtx.beginPath(); gCtx.moveTo(ms.x,ms.y); gCtx.lineTo(ps.x,ps.y); gCtx.stroke();
+          gCtx.strokeStyle='rgba(255,60,60,.3)'; gCtx.lineWidth=1; gCtx.setLineDash([3,6]);
+          gCtx.beginPath(); gCtx.arc(ms.x,ms.y,BITE_PX,0,Math.PI*2); gCtx.stroke();
+          gCtx.restore();
+        }
       }
     }
   }
 
-  document.getElementById('biteBtn').style.display = (biteTarget && alive) ? 'flex' : 'none';
+  // Aggiorna pulsante morso solo se cambia stato
+  const showBite=!!(biteTarget&&alive);
+  if (showBite!==prevBiteState) {
+    elBiteBtn.style.display=showBite?'flex':'none';
+    if (showBite) maybeRangeSnd();
+    prevBiteState=showBite;
+  }
+
   requestAnimationFrame(gameLoop);
 }
 </script>
