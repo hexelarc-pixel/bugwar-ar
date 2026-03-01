@@ -48,7 +48,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 /* ── GAME ── */
 #game { position:fixed; inset:0; display:none; }
 #vid { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
-#gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+#gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; transform:scaleX(-1); }
 
 /* HUD top */
 #hud {
@@ -276,7 +276,7 @@ function detectBall() {
   const cx=sx/n, cy=sy/n, rad=Math.max((x1-x0)/2,(y1-y0)/2,8);
   const rect=vid.getBoundingClientRect();
   const kx=rect.width/detC.width, ky=rect.height/detC.height;
-  return { x: rect.left+(detC.width-cx)*kx, y: rect.top+cy*ky, r: rad*kx };
+  return { x: rect.left+cx*kx, y: rect.top+cy*ky, r: rad*kx };
 }
 
 // ═══════════════════════════════════
@@ -401,93 +401,177 @@ function kill(by) {
 }
 
 // ═══════════════════════════════════
-//  BUG DRAWING
+//  COLOR HELPERS
+// ═══════════════════════════════════
+function hexToRgb(h){const n=parseInt(h.replace('#',''),16);return[(n>>16)&255,(n>>8)&255,n&255];}
+function lc(hex,f){const[r,g,b]=hexToRgb(hex);return`rgb(${Math.min(255,~~(r+f*255))},${Math.min(255,~~(g+f*255))},${Math.min(255,~~(b+f*255))})`;}
+function dc(h,f){return lc(h,-f);}
+function ac(hex,a){const[r,g,b]=hexToRgb(hex);return`rgba(${r},${g},${b},${a})`;}
+
+// ═══════════════════════════════════
+//  BUG DRAWING  (biomechanical)
 // ═══════════════════════════════════
 function worldToScreen(wx, wy) {
   if (!anchorS) return null;
   const k = Math.max(.4, Math.min(2.8, anchorS.r/28));
-  return { x: anchorS.x + wx*k, y: anchorS.y + wy*k, k };
+  return { x: anchorS.x - wx*k, y: anchorS.y + wy*k, k };
 }
 
 function drawBug(ctx, wx, wy, ang, col, moving, isMe, dead) {
   const sp = worldToScreen(wx, wy);
   if (!sp) return;
   const { x, y, k } = sp;
-  const s  = k * (isMe ? 1.15 : 0.95);
-  const c  = COLORS[col]||'#fff';
-
+  const s = k * (isMe ? 1.2 : 1.0);
+  const c = COLORS[col] || '#fff';
+  const t = frameN;
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(ang);
-  ctx.globalAlpha = dead ? 0.3 : 1;
+  if (dead) ctx.globalAlpha = 0.32;
 
-  // Floor shadow
-  ctx.save(); ctx.scale(1,.35);
-  ctx.beginPath(); ctx.ellipse(0, 10*s, 15*s, 9*s, 0, 0, Math.PI*2);
-  ctx.fillStyle='rgba(0,0,0,.28)'; ctx.fill(); ctx.restore();
+  // Ground shadow
+  ctx.save(); ctx.scale(1, 0.25);
+  const sg = ctx.createRadialGradient(0,50*s,0, 0,50*s,20*s);
+  sg.addColorStop(0,'rgba(0,0,0,0.5)'); sg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.beginPath(); ctx.ellipse(0,50*s,20*s,14*s,0,0,Math.PI*2);
+  ctx.fillStyle=sg; ctx.fill(); ctx.restore();
 
-  // Legs
-  const la = moving ? Math.sin(frameN*.32)*.45 : 0;
-  ctx.strokeStyle=c; ctx.lineWidth=2*s; ctx.lineCap='round';
+  // ── Mechanical Legs (3 per side) ──
+  const legRootY = [-20*s, -7*s, 5*s];
+  const la = moving ? Math.sin(t*0.28) : 0;
+  ctx.lineCap='round';
   for (let side=-1; side<=1; side+=2) {
-    for (let i=0; i<3; i++) {
-      const ly=(-9+i*8)*s, ph=(i%2===0?1:-1)*side*la;
-      ctx.beginPath();
-      ctx.moveTo(side*5*s, ly);
-      ctx.quadraticCurveTo(side*11*s, ly, side*(15+ph*4)*s, ly+8*s+Math.abs(ph)*4*s);
-      ctx.stroke();
+    for (let li=0; li<3; li++) {
+      const ry = legRootY[li];
+      const phase = ((li%2===0)?1:-1)*side;
+      const sway = la*phase*7*s;
+      const rx = side*7*s;
+      const mx = side*(15*s+sway*0.5), my = ry+9*s;
+      const tx2 = side*(22*s+sway),    ty2 = ry+19*s;
+      ctx.lineWidth=2.5*s; ctx.strokeStyle=dc(c,0.1);
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(mx,my); ctx.stroke();
+      ctx.lineWidth=1.8*s; ctx.strokeStyle=dc(c,0.3);
+      ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(tx2,ty2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(mx,my,3*s,0,Math.PI*2);
+      ctx.fillStyle=lc(c,0.45); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=s;
+      ctx.beginPath(); ctx.arc(mx,my,3*s,0,Math.PI*2); ctx.stroke();
+      ctx.lineWidth=1.2*s; ctx.strokeStyle='#ccc';
+      ctx.beginPath(); ctx.moveTo(tx2,ty2); ctx.lineTo(tx2+side*4*s,ty2+2*s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx2,ty2); ctx.lineTo(tx2+side*2*s,ty2+5*s); ctx.stroke();
     }
   }
 
-  // Abdomen
-  ctx.beginPath(); ctx.ellipse(0, 5*s, 8*s, 12*s, 0, 0, Math.PI*2);
-  ctx.fillStyle=c; ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
-  // Stripes
-  for (let i=-1; i<=1; i++) {
-    ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,(i*.3)-.05,(i*.3)+.15);
-    ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=2*s; ctx.stroke();
+  // ── Abdomen (angular armor plates) ──
+  const ag = ctx.createLinearGradient(-9*s,0, 9*s,22*s);
+  ag.addColorStop(0,lc(c,0.4)); ag.addColorStop(0.6,c); ag.addColorStop(1,dc(c,0.5));
+  ctx.beginPath();
+  ctx.moveTo(0,-2*s); ctx.lineTo(8*s,1*s); ctx.lineTo(9*s,11*s);
+  ctx.lineTo(5*s,22*s); ctx.lineTo(-5*s,22*s); ctx.lineTo(-9*s,11*s); ctx.lineTo(-8*s,1*s);
+  ctx.closePath();
+  ctx.fillStyle=ag; ctx.fill();
+  ctx.strokeStyle=lc(c,0.5); ctx.lineWidth=1.5*s; ctx.stroke();
+  // Panel seams
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=0.8*s;
+  [[5*s,7*s],[7*s,13*s],[5*s,19*s]].forEach(([hw,py])=>{
+    ctx.beginPath(); ctx.moveTo(-hw,py); ctx.lineTo(hw,py); ctx.stroke();
+  });
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,20*s); ctx.stroke();
+  // Reactor core
+  if (!dead) {
+    const pulse = 0.85+Math.sin(t*0.07)*0.15;
+    const rg = ctx.createRadialGradient(0,11*s,0, 0,11*s,5.5*s*pulse);
+    rg.addColorStop(0,'rgba(255,255,255,0.95)'); rg.addColorStop(0.45,ac(c,0.9)); rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(0,11*s,5*s,0,Math.PI*2); ctx.fillStyle=rg; ctx.fill();
+    ctx.beginPath();
+    for(let i=0;i<6;i++){const a=i*Math.PI/3-Math.PI/6; i===0?ctx.moveTo(4*s*Math.cos(a),11*s+4*s*Math.sin(a)):ctx.lineTo(4*s*Math.cos(a),11*s+4*s*Math.sin(a));}
+    ctx.closePath(); ctx.strokeStyle=lc(c,0.6); ctx.lineWidth=0.9*s; ctx.stroke();
   }
 
-  // Head
-  ctx.beginPath(); ctx.ellipse(0,-8*s,7*s,7*s,0,0,Math.PI*2);
-  ctx.fillStyle=c; ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
-
-  // Eyes
-  const ex=[[-3,dead?'#f00':'#fff'],[3,dead?'#f00':'#fff']];
-  ex.forEach(([ex_])=>{
-    ctx.beginPath(); ctx.arc(ex_*s,-9*s,2.6*s,0,Math.PI*2);
-    ctx.fillStyle='#fff'; ctx.fill();
-    ctx.beginPath(); ctx.arc(ex_*s,-9*s,1.2*s,0,Math.PI*2);
-    ctx.fillStyle='#111'; ctx.fill();
-  });
-  if (dead) { // X eyes
-    ctx.strokeStyle='#ff3333'; ctx.lineWidth=1.5*s;
-    [-3,3].forEach(ex_=>{
-      ctx.beginPath(); ctx.moveTo((ex_-2)*s,-11*s); ctx.lineTo((ex_+2)*s,-7*s); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo((ex_+2)*s,-11*s); ctx.lineTo((ex_-2)*s,-7*s); ctx.stroke();
-    });
-  }
-
-  // Antennae
-  const aw = moving ? Math.sin(frameN*.18)*5 : 2;
-  ctx.strokeStyle=c; ctx.lineWidth=1.5*s; ctx.lineCap='round';
-  [[-3,-10+aw],[3,10-aw]].forEach(([bx,tx])=>{
-    ctx.beginPath(); ctx.moveTo(bx*s,-14*s);
-    ctx.quadraticCurveTo(bx*s-2*s,-20*s,tx*s,-27*s); ctx.stroke();
-    ctx.beginPath(); ctx.arc(tx*s,-27*s,2.4*s,0,Math.PI*2);
-    ctx.fillStyle=c; ctx.fill();
+  // ── Thorax (armored bridge) ──
+  const tg = ctx.createLinearGradient(-8*s,-22*s, 8*s,-2*s);
+  tg.addColorStop(0,lc(c,0.6)); tg.addColorStop(1,dc(c,0.1));
+  ctx.beginPath();
+  ctx.moveTo(-8*s,-2*s); ctx.lineTo(8*s,-2*s); ctx.lineTo(9*s,-8*s);
+  ctx.lineTo(6*s,-22*s); ctx.lineTo(-6*s,-22*s); ctx.lineTo(-9*s,-8*s);
+  ctx.closePath();
+  ctx.fillStyle=tg; ctx.fill();
+  ctx.strokeStyle=lc(c,0.5); ctx.lineWidth=1.5*s; ctx.stroke();
+  // Circuit traces
+  ctx.strokeStyle='rgba(255,255,255,0.14)'; ctx.lineWidth=s;
+  ctx.beginPath(); ctx.moveTo(-5*s,-6*s); ctx.lineTo(-2*s,-6*s); ctx.lineTo(-2*s,-15*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(5*s,-6*s);  ctx.lineTo(2*s,-6*s);  ctx.lineTo(2*s,-18*s);  ctx.stroke();
+  [[-2,-15],[2,-18],[0,-10]].forEach(([nx,ny])=>{
+    ctx.beginPath(); ctx.arc(nx*s,ny*s,1.8*s,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.22)'; ctx.fill();
   });
 
-  // Name tag
+  // ── Head (sensor dome) ──
+  const hg = ctx.createLinearGradient(-7*s,-36*s, 7*s,-22*s);
+  hg.addColorStop(0,lc(c,0.7)); hg.addColorStop(1,lc(c,0.25));
+  ctx.beginPath();
+  ctx.moveTo(-6*s,-22*s); ctx.lineTo(6*s,-22*s); ctx.lineTo(8*s,-27*s);
+  ctx.lineTo(4*s,-35*s);  ctx.lineTo(-4*s,-35*s); ctx.lineTo(-8*s,-27*s);
+  ctx.closePath();
+  ctx.fillStyle=hg; ctx.fill();
+  ctx.strokeStyle=lc(c,0.55); ctx.lineWidth=1.5*s; ctx.stroke();
+
+  // ── Compound Eyes (cyber-faceted) ──
+  [[-3.8,-29],[3.8,-29]].forEach(([ex,ey])=>{
+    ex*=s; ey*=s;
+    ctx.beginPath(); ctx.arc(ex,ey,3.8*s,0,Math.PI*2);
+    ctx.fillStyle=dead?'#1a0000':'#001020'; ctx.fill();
+    ctx.strokeStyle=dead?'#444':lc(c,0.5); ctx.lineWidth=1.3*s; ctx.stroke();
+    if (!dead) {
+      const eg=ctx.createRadialGradient(ex,ey,0,ex,ey,3.5*s);
+      eg.addColorStop(0,'rgba(0,220,255,1)'); eg.addColorStop(0.5,'rgba(0,100,200,0.6)'); eg.addColorStop(1,'rgba(0,20,60,0)');
+      ctx.beginPath(); ctx.arc(ex,ey,3.5*s,0,Math.PI*2); ctx.fillStyle=eg; ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=0.5*s;
+      for(let fi=0;fi<6;fi++){const fa=fi*Math.PI/3; ctx.beginPath(); ctx.moveTo(ex,ey); ctx.lineTo(ex+3.5*s*Math.cos(fa),ey+3.5*s*Math.sin(fa)); ctx.stroke();}
+    } else {
+      ctx.strokeStyle='#ff2200'; ctx.lineWidth=1.3*s;
+      ctx.beginPath(); ctx.moveTo(ex-2.8*s,ey-2.8*s); ctx.lineTo(ex+2.8*s,ey+2.8*s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ex+2.8*s,ey-2.8*s); ctx.lineTo(ex-2.8*s,ey+2.8*s); ctx.stroke();
+    }
+  });
+
+  // ── Mandibles ──
+  ctx.lineCap='round'; ctx.lineWidth=1.8*s; ctx.strokeStyle=lc(c,0.25);
+  [[-1],[1]].forEach(([side])=>{
+    const bx=side*3*s, by=-35*s;
+    ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+side*5*s,-42*s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(bx+side*2*s,-42*s); ctx.stroke();
+    ctx.lineWidth=0.7*s; ctx.strokeStyle='#aaa';
+    for(let si=1;si<=3;si++){const tp=si/4; const sx=bx+(side*5*s-bx)*tp, sy=by+(-42*s-by)*tp; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+side*2*s,sy+s); ctx.stroke();}
+  });
+
+  // ── Antennae ──
+  const aw = moving ? Math.sin(t*0.18)*4 : 1;
+  ctx.lineWidth=1.3*s; ctx.strokeStyle=dc(c,0.05); ctx.lineCap='round';
+  [[-3,1],[3,-1]].forEach(([bx,dir])=>{
+    const tipX=bx*s+dir*aw*s, tipY=-50*s;
+    ctx.beginPath(); ctx.moveTo(bx*s,-35*s); ctx.lineTo(bx*s+dir*2*s,-42*s); ctx.lineTo(tipX,tipY); ctx.stroke();
+    ctx.beginPath(); ctx.arc(tipX,tipY,2.5*s,0,Math.PI*2);
+    ctx.fillStyle=dead?'#333':lc(c,0.4); ctx.fill();
+    if (!dead){
+      const sn=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,5.5*s);
+      sn.addColorStop(0,'rgba(255,255,255,0.8)'); sn.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.arc(tipX,tipY,5.5*s,0,Math.PI*2); ctx.fillStyle=sn; ctx.fill();
+    }
+  });
+
+  // ── Name Tag (counter-mirror for readable text) ──
   if (isMe) {
     ctx.rotate(-ang);
-    ctx.font = `bold ${Math.round(11*k)}px sans-serif`;
+    ctx.save();
+    ctx.scale(-1,1);
+    ctx.font=`bold ${Math.round(11*k)}px monospace`;
     ctx.textAlign='center';
-    ctx.fillStyle='#fff'; ctx.shadowColor='#000'; ctx.shadowBlur=4;
-    ctx.fillText('TU', 0, -34*s);
+    ctx.shadowColor=c; ctx.shadowBlur=10;
+    ctx.fillStyle='#fff';
+    ctx.fillText('▶ YOU', 0, -58*s);
     ctx.shadowBlur=0;
+    ctx.restore();
   }
 
   ctx.globalAlpha=1;
