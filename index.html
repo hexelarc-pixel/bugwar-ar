@@ -35,22 +35,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 }
 #roomIn::placeholder { color:rgba(255,255,255,.35); letter-spacing:1px; text-transform:none; }
 
-/* Selezione colore oggetto ancora */
-.anchors { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-.abtn {
-  width:44px; height:44px; border-radius:50%; border:3px solid transparent;
-  cursor:pointer; transition:.2s; position:relative;
-}
-.abtn.sel { border-color:#fff; transform:scale(1.18); }
-.abtn::after { content:attr(data-label); position:absolute; bottom:-16px; left:50%;
-  transform:translateX(-50%); font-size:9px; color:#aaa; white-space:nowrap; }
-.abtn[data-a="blue"]   { background:#2255ff; }
-.abtn[data-a="orange"] { background:#ff8800; }
-.abtn[data-a="yellow"] { background:#eecc00; }
-.abtn[data-a="red"]    { background:#ff2222; }
-.abtn[data-a="green"]  { background:#22cc44; }
-.abtn[data-a="white"]  { background:#e8e8e8; }
-
 #joinBtn {
   background:linear-gradient(135deg,#8800ff,#ff0088); color:#fff; border:none;
   padding:14px 44px; border-radius:30px; font-size:1.1em; cursor:pointer;
@@ -101,22 +85,13 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 
 <div id="setup">
   <h1>🐛 BugWar</h1>
-  <p class="sub">Realtà Aumentata · Multiplayer<br>Metti un oggetto colorato al centro del campo!</p>
+  <p class="sub">Realtà Aumentata · Multiplayer<br>Metti una pallina blu al centro del campo!</p>
   <p style="color:#bbb;font-size:.9em;margin-bottom:4px">Scegli il tuo insetto:</p>
   <div class="colors">
     <div class="cbtn" data-c="blue"   data-label="Blu"    onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="red"    data-label="Rosso"  onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="green"  data-label="Verde"  onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="purple" data-label="Viola"  onclick="pickColor(this)"></div>
-  </div>
-  <p style="color:#bbb;font-size:.9em;margin-bottom:0;margin-top:4px">Colore oggetto al centro:</p>
-  <div class="anchors">
-    <div class="abtn" data-a="blue"   data-label="Blu"     onclick="pickAnchor(this)"></div>
-    <div class="abtn" data-a="orange" data-label="Arancio" onclick="pickAnchor(this)"></div>
-    <div class="abtn" data-a="yellow" data-label="Giallo"  onclick="pickAnchor(this)"></div>
-    <div class="abtn" data-a="red"    data-label="Rosso"   onclick="pickAnchor(this)"></div>
-    <div class="abtn" data-a="green"  data-label="Verde"   onclick="pickAnchor(this)"></div>
-    <div class="abtn" data-a="white"  data-label="Bianco"  onclick="pickAnchor(this)"></div>
   </div>
   <input id="roomIn" type="text" maxlength="8" placeholder="Codice stanza" autocomplete="off" spellcheck="false">
   <button id="joinBtn" onclick="join()">ENTRA NEL GIOCO 🐛</button>
@@ -136,7 +111,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
     <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca oggetto…</span></div>
   </div>
   <div id="plist"></div>
-  <div id="calib">📷 Punta sul <b>oggetto al centro</b> del campo</div>
+  <div id="calib">📷 Punta la fotocamera sulla <b>pallina blu</b></div>
   <div id="bigMsg"></div>
   <div id="joy"><div id="joyB"><div id="joyK"></div></div></div>
   <div id="dead"><h2>💀 SEI MORTO</h2><p>Hai subito un morso!</p></div>
@@ -150,23 +125,12 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 // ═══════════════════════════════════════════════════
 const RELAYS     = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
 const PUB_MS     = 90;
-const COLL_PX    = 90;      // px schermo per collisione
-const FACING_DOT = 0.55;    // cos ~57° — angolo "testa puntata"
+const COLL_PX    = 90;
+const FACING_DOT = 0.55;
 const SPD        = 2.4;
 const LERP       = 0.14;
-const BOUND      = 46;      // unità mondo max (campo = ±50)
-const ARENA_R    = 50;      // raggio campo in unità mondo
 const COLORS     = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
-
-// Filtri colore per oggetto ancora
-const ANCHOR_FILTERS = {
-  blue:   (r,g,b)=> b>=115 && r<=115 && g<=125 && (b-r)>=38 && (b-g)>=15,
-  orange: (r,g,b)=> r>=160 && g>=70  && g<=155 && b<=80  && r-b>=80,
-  yellow: (r,g,b)=> r>=170 && g>=160 && b<=90  && r-b>=90,
-  red:    (r,g,b)=> r>=150 && g<=90  && b<=90  && r-g>=70 && r-b>=70,
-  green:  (r,g,b)=> g>=120 && r<=110 && b<=110 && (g-r)>=35 && (g-b)>=15,
-  white:  (r,g,b)=> r>=195 && g>=195 && b>=195 && Math.max(r,g,b)-Math.min(r,g,b)<35,
-};
+const BLUE_MATCH = (r,g,b)=> b>=115 && r<=115 && g<=125 && (b-r)>=38 && (b-g)>=15;
 
 // ═══════════════════════════════════════════════════
 //  DOM CACHE
@@ -185,7 +149,7 @@ const joyB=$('joyB'), joyK=$('joyK');
 //  STATE
 // ═══════════════════════════════════════════════════
 const myId = 'b'+Math.random().toString(36).slice(2,9);
-let myColor='blue', anchorColor='blue', roomCode='', gun=null, gamePath='';
+let myColor='blue', roomCode='', gun=null, gamePath='';
 let myX=(Math.random()-.5)*60, myY=(Math.random()-.5)*60;
 let myAngle=0, myMoving=false, alive=true, gameOn=false;
 const others = {};
@@ -223,12 +187,7 @@ function pickColor(el) {
   document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('sel'));
   el.classList.add('sel'); myColor=el.dataset.c;
 }
-function pickAnchor(el) {
-  document.querySelectorAll('.abtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel'); anchorColor=el.dataset.a;
-}
 document.querySelector('.cbtn[data-c="blue"]').click();
-document.querySelector('.abtn[data-a="blue"]').click();
 
 function join() {
   const code=$('roomIn').value.trim().toUpperCase(), err=$('err');
@@ -263,11 +222,10 @@ function detectAnchor() {
   detX.drawImage(vid,0,0,detC.width,detC.height);
   const img=detX.getImageData(0,0,detC.width,detC.height).data;
   const W=detC.width, H=detC.height;
-  const match=ANCHOR_FILTERS[anchorColor];
   let sx=0,sy=0,n=0,x0=1e9,x1=-1,y0=1e9,y1=-1;
   for (let y=0;y<H;y+=3) for (let x=0;x<W;x+=3) {
     const i=(y*W+x)*4;
-    if (match(img[i],img[i+1],img[i+2])) {
+    if (BLUE_MATCH(img[i],img[i+1],img[i+2])) {
       sx+=x; sy+=y; n++;
       if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
     }
@@ -504,9 +462,6 @@ function gameLoop() {
     const len=Math.hypot(dx,dy);
     if (len>.01) {
       myX+=dx/len*SPD; myY+=dy/len*SPD; myAngle=Math.atan2(dx,-dy); myMoving=true;
-      // Clamp entro il cerchio del campo
-      const d=Math.hypot(myX,myY);
-      if (d>BOUND) { myX=myX/d*BOUND; myY=myY/d*BOUND; }
     } else myMoving=false;
   }
 
