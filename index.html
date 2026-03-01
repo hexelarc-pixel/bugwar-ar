@@ -95,15 +95,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
 }
 
-/* Bite button */
-#biteBtn {
-  position:absolute; bottom:30px; right:20px; width:88px; height:88px; border-radius:50%;
-  background:rgba(220,20,20,.88); border:3px solid #ff6666; color:#fff; font-size:2em;
-  cursor:pointer; align-items:center; justify-content:center;
-  display:none; box-shadow:0 0 22px rgba(255,0,0,.65); animation:pls .5s infinite alternate;
-}
-@keyframes pls { from{transform:scale(1)} to{transform:scale(1.1)} }
-
 /* Overlays */
 #dead {
   position:absolute; inset:0; background:rgba(180,0,0,.45);
@@ -123,7 +114,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 <!-- ── SETUP SCREEN ── -->
 <div id="setup">
   <h1>🐛 BugWar</h1>
-  <p class="sub">Realtà Aumentata · Multiplayer<br>Punta sulla pallina blu e combatti!</p>
+  <p class="sub">Realtà Aumentata · Multiplayer<br>Posiziona 4 pedine nere sugli angoli del campo!</p>
   <p style="color:#bbb;font-size:.9em;margin-bottom:4px">Scegli il tuo insetto:</p>
   <div class="colors">
     <div class="cbtn" data-c="blue"   data-label="Blu"    onclick="pickColor(this)"></div>
@@ -137,7 +128,7 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   <p class="hint-s">
     Stesso codice = stessa partita.<br>
     Stesso colore = squadra alleata 🤝<br>
-    Insetti diversi = nemici, mordili prima! 🦷
+    Avvicina la testa al nemico per mordere! 🦷
   </p>
 </div>
 
@@ -147,14 +138,13 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   <canvas id="gc"></canvas>
   <div id="hud">
     <div>Stanza: <b id="hRoom">-</b><br>Giocatori: <b id="hPl">1</b></div>
-    <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca pallina…</span></div>
+    <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca pedine…</span></div>
   </div>
   <div id="plist"></div>
-  <div id="calib">📷 Punta la fotocamera sulla <b>pallina blu</b></div>
+  <div id="calib">🎯 Inquadra le 4 <b>pedine nere</b> agli angoli del campo</div>
   <div id="bigMsg"></div>
   <div id="joy"><div id="joyB"><div id="joyK"></div></div></div>
-  <div id="biteBtn" onclick="doBite()">🦷</div>
-  <div id="dead"><h2>�� SEI MORTO</h2><p>Hai subito un morso!</p></div>
+  <div id="dead"><h2>💀 SEI MORTO</h2><p>Hai subito un morso!</p></div>
   <div id="win"><h2>🏆 VITTORIA!</h2><p id="winMsg"></p></div>
 </div>
 
@@ -163,13 +153,14 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 // ═══════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════
-const RELAYS  = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
-const PUB_MS  = 90;
-const BITE_PX = 95;
-const FACING_DOT = 0.55; // cos(~57°): angolo entro cui la testa conta come "puntata"
-const SPD     = 2.8;
-const LERP    = 0.14;
-const COLORS  = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
+const RELAYS      = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
+const PUB_MS      = 90;
+const COLL_PX     = 90;      // pixel screen per collisione
+const FACING_DOT  = 0.55;    // cos ~57°: angolo di "testa puntata"
+const SPD         = 2.4;
+const LERP        = 0.12;
+const BOUND       = 46;      // unità mondo max (campo = ±50, insetti non escono)
+const COLORS      = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
 
 // ═══════════════════════════════════
 //  DOM CACHE
@@ -177,7 +168,7 @@ const COLORS  = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22f
 const $ = id => document.getElementById(id);
 const elSetup=$('setup'), elGame=$('game'), elHRoom=$('hRoom'), elHPl=$('hPl'),
       elHColor=$('hColor'), elHStatus=$('hStatus'), elCalib=$('calib'),
-      elBigMsg=$('bigMsg'), elPlist=$('plist'), elBiteBtn=$('biteBtn'),
+      elBigMsg=$('bigMsg'), elPlist=$('plist'),
       elDead=$('dead'), elWin=$('win'), elWinMsg=$('winMsg');
 const vid=$('vid'), gc=$('gc'), gCtx=gc.getContext('2d');
 const detC=document.createElement('canvas');
@@ -189,47 +180,36 @@ const joyB=$('joyB'), joyK=$('joyK');
 // ═══════════════════════════════════
 const myId = 'b'+Math.random().toString(36).slice(2,9);
 let myColor='blue', roomCode='', gun=null, gamePath='';
-let myX=(Math.random()-.5)*80, myY=(Math.random()-.5)*80;
+let myX=(Math.random()-.5)*60, myY=(Math.random()-.5)*60;
 let myAngle=0, myMoving=false, alive=true, gameOn=false;
 const others={};
-let anchorS=null, wasAnchored=false;
-let biteTarget=null, prevBiteState=false, biteCooldown=0;
+// corners: [TL, TR, BR, BL] coordinate schermo (smoothed)
+let corners=null, cornersRaw=null, calibrated=false;
+let biteTarget=null, biteCooldown=0;
 let frameN=0;
 
 // ═══════════════════════════════════
-//  AUDIO (Web Audio API, no files)
+//  AUDIO
 // ═══════════════════════════════════
 let audioCtx=null;
 function ac() {
   if (!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
   return audioCtx;
 }
-function tone(freq, type, vol, dur, delay=0, freqEnd=null) {
+function tone(freq,type,vol,dur,delay=0,freqEnd=null) {
   const ctx=ac(), t0=ctx.currentTime+delay;
   const osc=ctx.createOscillator(), gain=ctx.createGain();
   osc.type=type; osc.frequency.setValueAtTime(freq,t0);
-  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t0+dur);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd,t0+dur);
   gain.gain.setValueAtTime(vol,t0);
-  gain.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  gain.gain.exponentialRampToValueAtTime(0.001,t0+dur);
   osc.connect(gain); gain.connect(ctx.destination);
   osc.start(t0); osc.stop(t0+dur+0.01);
 }
-// Morso: scatto secco discendente
 function sndBite()   { tone(900,'sawtooth',.35,.06,0,300); tone(250,'square',.15,.12,.04); }
-// Morte: tre toni gravi a cascata
 function sndDeath()  { [350,240,160].forEach((f,i)=>tone(f,'sine',.3,.28,i*.14)); }
-// Nemico vicino: tic breve (throttled)
-function sndRange()  { tone(520,'square',.05,.07); }
-// Pallina agganciata: doppio beep positivo
-function sndAnchor() { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
-// Vittoria: scala ascendente
+function sndCalib()  { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
 function sndWin()    { [523,659,784,1047].forEach((f,i)=>tone(f,'sine',.22,.32,i*.13)); }
-
-let lastRangeSnd=0;
-function maybeRangeSnd() {
-  const now=Date.now();
-  if (now-lastRangeSnd>1800) { sndRange(); lastRangeSnd=now; }
-}
 
 // ═══════════════════════════════════
 //  SETUP
@@ -241,11 +221,10 @@ function pickColor(el) {
 document.querySelector('.cbtn[data-c="blue"]').click();
 
 function join() {
-  const code=$('roomIn').value.trim().toUpperCase();
-  const err=$('err');
+  const code=$('roomIn').value.trim().toUpperCase(), err=$('err');
   if (code.length<3) { err.textContent='Codice troppo corto (min 3 caratteri)'; return; }
   err.textContent=''; roomCode=code;
-  ac().resume(); // sblocca AudioContext su mobile
+  ac().resume();
   elSetup.style.display='none'; elGame.style.display='block';
   elHRoom.textContent=roomCode;
   elHColor.innerHTML=`<span style="color:${COLORS[myColor]}">${myColor}</span>`;
@@ -253,37 +232,71 @@ function join() {
 }
 
 // ═══════════════════════════════════
-//  CAMERA + RILEVAMENTO PALLINA
+//  CAMERA
 // ═══════════════════════════════════
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(
-      {video:{facingMode:'environment',width:640,height:480}}
-    ).catch(() => navigator.mediaDevices.getUserMedia({video:true}));
-    vid.srcObject=stream;
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:640,height:480}})
+      .catch(()=>navigator.mediaDevices.getUserMedia({video:true}));
+    vid.srcObject=s;
     vid.onloadedmetadata=()=>{ detC.width=vid.videoWidth; detC.height=vid.videoHeight; resize(); gameLoop(); };
   } catch(e) { alert('Webcam non disponibile: '+e.message); }
 }
-
 function resize() { gc.width=window.innerWidth; gc.height=window.innerHeight; }
-window.addEventListener('resize', resize);
+window.addEventListener('resize',resize);
 
-function detectBall() {
+// ═══════════════════════════════════
+//  RILEVAMENTO 4 PEDINE SCURE
+//  Una pedina per quadrante video → ordine: [TL, TR, BR, BL]
+// ═══════════════════════════════════
+function detectCorners() {
   detX.drawImage(vid,0,0,detC.width,detC.height);
   const img=detX.getImageData(0,0,detC.width,detC.height).data;
-  let sx=0,sy=0,n=0,x0=1e9,x1=-1,y0=1e9,y1=-1;
-  for (let y=0;y<detC.height;y+=3) for (let x=0;x<detC.width;x+=3) {
-    const i=(y*detC.width+x)*4,r=img[i],g=img[i+1],b=img[i+2];
-    if (b>=115&&r<=115&&g<=125&&(b-r)>=38&&(b-g)>=15) {
-      sx+=x; sy+=y; n++;
-      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+  const W=detC.width, H=detC.height, HW=W>>1, HH=H>>1;
+  // Quattro quadranti: TL TR BR BL
+  const quads=[
+    {x0:0,  x1:HW, y0:0,  y1:HH},
+    {x0:HW, x1:W,  y0:0,  y1:HH},
+    {x0:HW, x1:W,  y0:HH, y1:H },
+    {x0:0,  x1:HW, y0:HH, y1:H },
+  ];
+  const result=[];
+  for (const q of quads) {
+    let sx=0, sy=0, n=0;
+    for (let y=q.y0; y<q.y1; y+=3) for (let x=q.x0; x<q.x1; x+=3) {
+      const i=(y*W+x)*4, r=img[i], g=img[i+1], b=img[i+2];
+      if (r<70&&g<70&&b<70) { sx+=x; sy+=y; n++; }
     }
+    if (n<12) return null; // pedina non trovata in questo quadrante
+    result.push({x:sx/n, y:sy/n});
   }
-  if (n<50) return null;
-  const cx=sx/n, cy=sy/n, rad=Math.max((x1-x0)/2,(y1-y0)/2,8);
   const rect=vid.getBoundingClientRect();
-  const kx=rect.width/detC.width, ky=rect.height/detC.height;
-  return {x:rect.left+cx*kx, y:rect.top+cy*ky, r:rad*kx};
+  const kx=rect.width/W, ky=rect.height/H;
+  return result.map(p=>({x:rect.left+p.x*kx, y:rect.top+p.y*ky}));
+}
+
+// ═══════════════════════════════════
+//  COORDINATE: mondo → schermo
+//  Interpolazione bilineare nel quadrilatero
+//  World: wx,wy ∈ [-50,50]  →  u,v ∈ [0,1]
+//  Ordine corners: TL=u0v0, TR=u1v0, BR=u1v1, BL=u0v1
+// ═══════════════════════════════════
+function worldToScreen(wx,wy) {
+  if (!corners) return null;
+  const u=(wx+50)/100, v=(wy+50)/100;
+  const [TL,TR,BR,BL]=corners;
+  return {
+    x: TL.x*(1-u)*(1-v) + TR.x*u*(1-v) + BR.x*u*v + BL.x*(1-u)*v,
+    y: TL.y*(1-u)*(1-v) + TR.y*u*(1-v) + BR.y*u*v + BL.y*(1-u)*v,
+    k: arenaScale()
+  };
+}
+function arenaScale() {
+  if (!corners) return 1;
+  const [TL,TR,BR,BL]=corners;
+  const d1=Math.hypot(BR.x-TL.x,BR.y-TL.y);
+  const d2=Math.hypot(BL.x-TR.x,BL.y-TR.y);
+  return Math.max(0.3, Math.min(3, (d1+d2)/2/160));
 }
 
 // ═══════════════════════════════════
@@ -300,37 +313,31 @@ function initGun() {
     refreshPlayerList();
   });
   gun.get(gamePath).get('bites').get(myId).on(d=>{
-    if (!d?.by||!alive) return;
-    kill();
+    if (!d?.by||!alive) return; kill();
   });
-  setInterval(publishMe, PUB_MS);
-  setInterval(pruneStale, 4000);
+  setInterval(publishMe,PUB_MS);
+  setInterval(pruneStale,4000);
   gameOn=true;
 }
-
 function publishMe() {
   if (!gun) return;
   gun.get(gamePath).get('players').get(myId).put(
     {id:myId,color:myColor,x:myX,y:myY,angle:myAngle,alive:alive?1:0,ts:Date.now()}
   );
 }
-function sendBite(targetId) {
-  gun.get(gamePath).get('bites').get(targetId).put({by:myId,ts:Date.now()});
-}
+function sendBite(tid) { gun.get(gamePath).get('bites').get(tid).put({by:myId,ts:Date.now()}); }
 function pruneStale() {
-  const now=Date.now(); let changed=false;
-  for (const id in others) if (now-(others[id].ts||0)>6000) { delete others[id]; changed=true; }
-  if (changed) { refreshPlayerList(); checkWin(); }
+  const now=Date.now(); let ch=false;
+  for (const id in others) if (now-(others[id].ts||0)>6000) { delete others[id]; ch=true; }
+  if (ch) { refreshPlayerList(); checkWin(); }
 }
 function refreshPlayerList() {
   elPlist.innerHTML='';
   const all=[{color:myColor,alive,me:true},...Object.values(others)];
   elHPl.textContent=all.filter(p=>p.alive).length;
   all.forEach(p=>{
-    const d=document.createElement('div');
-    d.className='pdot';
-    const ally=p.color===myColor;
-    const label=p.me?'Tu':(ally?'🤝'+p.color:'⚔️'+p.color);
+    const d=document.createElement('div'); d.className='pdot';
+    const ally=p.color===myColor, label=p.me?'Tu':(ally?'🤝'+p.color:'⚔️'+p.color);
     d.innerHTML=`<div class="d" style="background:${COLORS[p.color]||'#fff'}"></div><span style="color:${ally?'#88ff99':'#ff8888'}">${label}${p.alive?'':' 💀'}</span>`;
     elPlist.appendChild(d);
   });
@@ -344,17 +351,19 @@ function checkWin() {
     gameOn=false; sndWin();
   }
 }
+function kill() {
+  if (!alive) return;
+  alive=false; sndDeath(); elDead.style.display='flex'; publishMe(); checkWin();
+}
 
 // ═══════════════════════════════════
 //  JOYSTICK
 // ═══════════════════════════════════
 const JR=34; let jdx=0, jdy=0;
 function joyMove(e) {
-  const t=e.touches?e.touches[0]:e;
-  const rc=joyB.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e, rc=joyB.getBoundingClientRect();
   let dx=t.clientX-(rc.left+rc.width/2), dy=t.clientY-(rc.top+rc.height/2);
-  const d=Math.hypot(dx,dy);
-  if (d>JR) { dx=dx/d*JR; dy=dy/d*JR; }
+  const d=Math.hypot(dx,dy); if (d>JR) { dx=dx/d*JR; dy=dy/d*JR; }
   joyK.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
   jdx=dx/JR; jdy=dy/JR;
 }
@@ -362,43 +371,23 @@ joyB.addEventListener('touchstart',e=>{joyMove(e);e.preventDefault();},{passive:
 joyB.addEventListener('touchmove', e=>{joyMove(e);e.preventDefault();},{passive:false});
 joyB.addEventListener('touchend',  ()=>{ jdx=0;jdy=0; joyK.style.transform='translate(-50%,-50%)'; });
 const keys={};
-document.addEventListener('keydown',e=>{keys[e.key]=true; if(e.key===' ')doBite();});
+document.addEventListener('keydown',e=>keys[e.key]=true);
 document.addEventListener('keyup',  e=>keys[e.key]=false);
 
 // ═══════════════════════════════════
-//  MORSO
-// ═══════════════════════════════════
-function doBite() {
-  if (!alive||!biteTarget||!gameOn||biteCooldown>0) return;
-  sendBite(biteTarget); sndBite(); flash('😈 HAI MORSO!',1200); biteCooldown=90;
-}
-function kill() {
-  if (!alive) return;
-  alive=false; sndDeath();
-  elDead.style.display='flex';
-  publishMe(); checkWin();
-}
-
-// ═══════════════════════════════════
-//  COLLISIONE AUTOMATICA DIREZIONALE
-//  - testa punta al nemico → morso automatico
-//  - entrambi si puntano a vicenda → muoiono entrambi (head-on)
+//  COLLISIONE DIREZIONALE AUTO
 // ═══════════════════════════════════
 function checkAutoCollisions() {
   if (biteCooldown>0) { biteCooldown--; return; }
-  if (!alive||!gameOn||!anchorS) return;
+  if (!alive||!gameOn||!corners) return;
   const ms=worldToScreen(myX,myY); if (!ms) return;
-  // Vettore "testa" del mio insetto nello spazio canvas
   const myFX=Math.sin(myAngle), myFY=-Math.cos(myAngle);
   Object.entries(others).forEach(([id,p])=>{
     if (!p.alive||p.color===myColor) return;
     const ps=worldToScreen(p.x||0,p.y||0); if (!ps) return;
-    const dist=Math.hypot(ms.x-ps.x,ms.y-ps.y);
-    if (dist>=BITE_PX) return;
-    // Direzione normalizzata me→nemico
+    const dist=Math.hypot(ms.x-ps.x,ms.y-ps.y); if (dist>=COLL_PX) return;
     const dx=(ps.x-ms.x)/dist, dy=(ps.y-ms.y)/dist;
-    // La mia testa punta verso il nemico?
-    if (myFX*dx+myFY*dy > FACING_DOT) {
+    if (myFX*dx+myFY*dy>FACING_DOT) {
       sendBite(id); sndBite(); flash('😈 MORSO!',1200); biteCooldown=90;
     }
   });
@@ -407,17 +396,10 @@ function checkAutoCollisions() {
 // ═══════════════════════════════════
 //  DISEGNO INSETTI
 // ═══════════════════════════════════
-function worldToScreen(wx,wy) {
-  if (!anchorS) return null;
-  const k=Math.max(.4,Math.min(2.8,anchorS.r/28));
-  return {x:anchorS.x+wx*k, y:anchorS.y+wy*k, k};
-}
-
 function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
   const sp=worldToScreen(wx,wy); if (!sp) return;
   const {x,y,k}=sp, s=k*(isMe?1.15:.95), c=COLORS[col]||'#fff';
-  ctx.save(); ctx.translate(x,y); ctx.rotate(ang);
-  ctx.globalAlpha=dead?.3:1;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang); ctx.globalAlpha=dead?.3:1;
   // Ombra
   ctx.save(); ctx.scale(1,.35);
   ctx.beginPath(); ctx.ellipse(0,10*s,15*s,9*s,0,0,Math.PI*2);
@@ -428,13 +410,11 @@ function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
   for (let side=-1;side<=1;side+=2) for (let i=0;i<3;i++) {
     const ly=(-9+i*8)*s, ph=(i%2===0?1:-1)*side*la;
     ctx.beginPath(); ctx.moveTo(side*5*s,ly);
-    ctx.quadraticCurveTo(side*11*s,ly, side*(15+ph*4)*s, ly+8*s+Math.abs(ph)*4*s);
-    ctx.stroke();
+    ctx.quadraticCurveTo(side*11*s,ly,side*(15+ph*4)*s,ly+8*s+Math.abs(ph)*4*s); ctx.stroke();
   }
   // Addome
   ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,0,Math.PI*2);
-  ctx.fillStyle=c; ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
+  ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
   for (let i=-1;i<=1;i++) {
     ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,i*.3-.05,i*.3+.15);
     ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=2*s; ctx.stroke();
@@ -471,6 +451,26 @@ function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
   ctx.globalAlpha=1; ctx.restore();
 }
 
+// Disegna il contorno del campo e i marker sulle pedine
+function drawArena(ctx) {
+  if (!corners) return;
+  const [TL,TR,BR,BL]=corners;
+  // Contorno tratteggiato
+  ctx.save();
+  ctx.strokeStyle='rgba(255,210,60,.65)'; ctx.lineWidth=2; ctx.setLineDash([10,6]);
+  ctx.beginPath(); ctx.moveTo(TL.x,TL.y); ctx.lineTo(TR.x,TR.y);
+  ctx.lineTo(BR.x,BR.y); ctx.lineTo(BL.x,BL.y); ctx.closePath(); ctx.stroke();
+  ctx.setLineDash([]);
+  // Cerchio sulle pedine
+  corners.forEach(c=>{
+    ctx.beginPath(); ctx.arc(c.x,c.y,10,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,210,60,.9)'; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(c.x,c.y,4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,210,60,.8)'; ctx.fill();
+  });
+  ctx.restore();
+}
+
 // ═══════════════════════════════════
 //  FLASH MESSAGGIO
 // ═══════════════════════════════════
@@ -488,23 +488,34 @@ function gameLoop() {
   frameN++;
   if (gc.width!==window.innerWidth||gc.height!==window.innerHeight) resize();
 
-  // Rilevamento pallina (ogni 2 frame per performance)
-  if (frameN%2===0) {
-    const det=detectBall();
-    if (det) {
-      anchorS=anchorS
-        ? {x:anchorS.x+(det.x-anchorS.x)*LERP, y:anchorS.y+(det.y-anchorS.y)*LERP, r:anchorS.r+(det.r-anchorS.r)*LERP}
-        : {...det};
-      if (!wasAnchored) { sndAnchor(); elCalib.style.display='none'; elHStatus.textContent='✅ Pallina agganciata!'; }
-      wasAnchored=true;
+  // Rilevamento pedine ogni 3 frame
+  if (frameN%3===0) {
+    const raw=detectCorners();
+    if (raw) {
+      // Smooth lerp su ogni angolo
+      if (!corners) {
+        corners=[...raw]; cornersRaw=raw;
+      } else {
+        for (let i=0;i<4;i++) {
+          corners[i]={
+            x:corners[i].x+(raw[i].x-corners[i].x)*LERP,
+            y:corners[i].y+(raw[i].y-corners[i].y)*LERP
+          };
+        }
+      }
+      if (!calibrated) {
+        calibrated=true; sndCalib();
+        elCalib.style.display='none';
+        elHStatus.textContent='✅ Campo rilevato!';
+      }
     } else {
-      if (wasAnchored) elCalib.style.display='block';
-      if (!anchorS) elHStatus.textContent='🔍 Cerca pallina blu…';
-      wasAnchored=false;
+      if (calibrated) elCalib.style.display='block';
+      if (!corners) elHStatus.textContent='🔍 Cerca 4 pedine nere…';
+      calibrated=false;
     }
   }
 
-  // Movimento
+  // Movimento + boundary enforcement
   if (alive&&gameOn) {
     let dx=jdx, dy=jdy;
     if (keys['ArrowLeft']||keys['a']) dx-=1;
@@ -512,57 +523,27 @@ function gameLoop() {
     if (keys['ArrowUp']||keys['w']) dy-=1;
     if (keys['ArrowDown']||keys['s']) dy+=1;
     const len=Math.hypot(dx,dy);
-    if (len>.01) { myX+=dx/len*SPD; myY+=dy/len*SPD; myAngle=Math.atan2(dx,-dy); myMoving=true; }
-    else myMoving=false;
+    if (len>.01) {
+      myX+=dx/len*SPD; myY+=dy/len*SPD; myAngle=Math.atan2(dx,-dy); myMoving=true;
+      // Clamp entro il campo
+      myX=Math.max(-BOUND,Math.min(BOUND,myX));
+      myY=Math.max(-BOUND,Math.min(BOUND,myY));
+    } else myMoving=false;
   }
 
   // Rendering
   gCtx.clearRect(0,0,gc.width,gc.height);
-  if (anchorS) {
-    // Glow pallina
-    const g=gCtx.createRadialGradient(anchorS.x,anchorS.y,0,anchorS.x,anchorS.y,anchorS.r*2.2);
-    g.addColorStop(0,'rgba(80,130,255,.22)'); g.addColorStop(1,'rgba(80,130,255,0)');
-    gCtx.beginPath(); gCtx.arc(anchorS.x,anchorS.y,anchorS.r*2.2,0,Math.PI*2);
-    gCtx.fillStyle=g; gCtx.fill();
+  drawArena(gCtx);
+
+  if (corners) {
     // Altri giocatori
     Object.values(others).forEach(p=>{ if(p.color) drawBug(gCtx,p.x||0,p.y||0,p.angle||0,p.color,false,false,!p.alive); });
-    // Mio insetto
+    // Il mio insetto
     drawBug(gCtx,myX,myY,myAngle,myColor,myMoving,true,!alive);
-    // Controllo prossimità morso
-    biteTarget=null;
-    if (alive&&gameOn) {
-      const ms=worldToScreen(myX,myY);
-      if (ms) {
-        let closestDist=BITE_PX;
-        Object.entries(others).forEach(([id,p])=>{
-          if (!p.alive||p.color===myColor) return;
-          const ps=worldToScreen(p.x||0,p.y||0); if (!ps) return;
-          const dist=Math.hypot(ms.x-ps.x,ms.y-ps.y);
-          if (dist<closestDist) { closestDist=dist; biteTarget=id; }
-        });
-        if (biteTarget) {
-          const ps=worldToScreen(others[biteTarget].x||0,others[biteTarget].y||0);
-          gCtx.save();
-          gCtx.strokeStyle='rgba(255,60,60,.7)'; gCtx.lineWidth=2; gCtx.setLineDash([6,4]);
-          gCtx.beginPath(); gCtx.moveTo(ms.x,ms.y); gCtx.lineTo(ps.x,ps.y); gCtx.stroke();
-          gCtx.strokeStyle='rgba(255,60,60,.3)'; gCtx.lineWidth=1; gCtx.setLineDash([3,6]);
-          gCtx.beginPath(); gCtx.arc(ms.x,ms.y,BITE_PX,0,Math.PI*2); gCtx.stroke();
-          gCtx.restore();
-        }
-      }
-    }
   }
 
-  // Collisione direzionale automatica
+  // Collisioni direzionali automatiche
   checkAutoCollisions();
-
-  // Aggiorna pulsante morso solo se cambia stato
-  const showBite=!!(biteTarget&&alive);
-  if (showBite!==prevBiteState) {
-    elBiteBtn.style.display=showBite?'flex':'none';
-    if (showBite) maybeRangeSnd();
-    prevBiteState=showBite;
-  }
 
   requestAnimationFrame(gameLoop);
 }
