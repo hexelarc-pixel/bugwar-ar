@@ -8,7 +8,6 @@
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:none; user-select:none; }
 
-/* ── SETUP ── */
 #setup {
   position:fixed; inset:0; z-index:1000;
   background:linear-gradient(135deg,#060614,#1a0a2e);
@@ -35,6 +34,23 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   text-align:center; outline:none; width:230px; text-transform:uppercase; letter-spacing:4px;
 }
 #roomIn::placeholder { color:rgba(255,255,255,.35); letter-spacing:1px; text-transform:none; }
+
+/* Selezione colore oggetto ancora */
+.anchors { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.abtn {
+  width:44px; height:44px; border-radius:50%; border:3px solid transparent;
+  cursor:pointer; transition:.2s; position:relative;
+}
+.abtn.sel { border-color:#fff; transform:scale(1.18); }
+.abtn::after { content:attr(data-label); position:absolute; bottom:-16px; left:50%;
+  transform:translateX(-50%); font-size:9px; color:#aaa; white-space:nowrap; }
+.abtn[data-a="blue"]   { background:#2255ff; }
+.abtn[data-a="orange"] { background:#ff8800; }
+.abtn[data-a="yellow"] { background:#eecc00; }
+.abtn[data-a="red"]    { background:#ff2222; }
+.abtn[data-a="green"]  { background:#22cc44; }
+.abtn[data-a="white"]  { background:#e8e8e8; }
+
 #joinBtn {
   background:linear-gradient(135deg,#8800ff,#ff0088); color:#fff; border:none;
   padding:14px 44px; border-radius:30px; font-size:1.1em; cursor:pointer;
@@ -44,12 +60,10 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 .err { color:#ff6644; font-size:.85em; min-height:18px; }
 .hint-s { color:#555; font-size:.75em; text-align:center; max-width:280px; line-height:1.6; }
 
-/* ── GAME ── */
 #game { position:fixed; inset:0; display:none; }
-#vid { width:100%; height:100%; object-fit:cover; display:block; }
-#gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+#vid  { width:100%; height:100%; object-fit:cover; display:block; }
+#gc   { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
-/* HUD */
 #hud {
   position:absolute; top:0; left:0; right:0;
   display:flex; justify-content:space-between; align-items:flex-start;
@@ -57,8 +71,6 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   color:#fff; font-size:12px; pointer-events:none;
 }
 #hud b { font-size:13px; }
-
-/* Calibration hint */
 #calib {
   position:absolute; bottom:155px; left:50%; transform:translateX(-50%);
   background:rgba(0,0,0,.72); color:#fff; padding:8px 18px; border-radius:20px;
@@ -66,61 +78,45 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   animation:bob 1.2s ease-in-out infinite alternate;
 }
 @keyframes bob { from{transform:translateX(-50%) translateY(0)} to{transform:translateX(-50%) translateY(-6px)} }
-
-/* Big message */
 #bigMsg {
   position:absolute; top:42%; left:50%; transform:translate(-50%,-50%);
   font-size:1.9em; font-weight:bold; color:#fff; text-align:center;
   text-shadow:0 2px 14px #000; pointer-events:none; opacity:0; transition:.25s;
 }
 #bigMsg.on { opacity:1; }
-
-/* Players list */
 #plist { position:absolute; top:68px; right:10px; display:flex; flex-direction:column; gap:4px; }
-.pdot {
-  display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.55);
-  padding:3px 9px; border-radius:12px; font-size:11px; color:#fff;
-}
+.pdot { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.55); padding:3px 9px; border-radius:12px; font-size:11px; color:#fff; }
 .pdot .d { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-
-/* Joystick */
 #joy { position:absolute; bottom:24px; left:20px; width:120px; height:120px; }
-#joyB {
-  width:120px; height:120px; border-radius:50%;
-  background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.28); position:relative;
-}
-#joyK {
-  width:52px; height:52px; border-radius:50%;
-  background:rgba(255,255,255,.55); border:2px solid rgba(255,255,255,.85);
-  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none;
-}
-
-/* Overlays */
-#dead {
-  position:absolute; inset:0; background:rgba(180,0,0,.45);
-  display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff;
-}
+#joyB { width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.28); position:relative; }
+#joyK { width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,.55); border:2px solid rgba(255,255,255,.85); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
+#dead { position:absolute; inset:0; background:rgba(180,0,0,.45); display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff; }
 #dead h2 { font-size:2.4em; }
 #dead p  { font-size:1em; color:#faa; }
-#win {
-  position:absolute; inset:0; background:rgba(0,0,0,.6);
-  display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff;
-}
+#win  { position:absolute; inset:0; background:rgba(0,0,0,.6); display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; color:#fff; }
 #win h2 { font-size:2.6em; }
 </style>
 </head>
 <body>
 
-<!-- ── SETUP SCREEN ── -->
 <div id="setup">
   <h1>🐛 BugWar</h1>
-  <p class="sub">Realtà Aumentata · Multiplayer<br>Posiziona 4 pedine nere sugli angoli del campo!</p>
+  <p class="sub">Realtà Aumentata · Multiplayer<br>Metti un oggetto colorato al centro del campo!</p>
   <p style="color:#bbb;font-size:.9em;margin-bottom:4px">Scegli il tuo insetto:</p>
   <div class="colors">
     <div class="cbtn" data-c="blue"   data-label="Blu"    onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="red"    data-label="Rosso"  onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="green"  data-label="Verde"  onclick="pickColor(this)"></div>
     <div class="cbtn" data-c="purple" data-label="Viola"  onclick="pickColor(this)"></div>
+  </div>
+  <p style="color:#bbb;font-size:.9em;margin-bottom:0;margin-top:4px">Colore oggetto al centro:</p>
+  <div class="anchors">
+    <div class="abtn" data-a="blue"   data-label="Blu"     onclick="pickAnchor(this)"></div>
+    <div class="abtn" data-a="orange" data-label="Arancio" onclick="pickAnchor(this)"></div>
+    <div class="abtn" data-a="yellow" data-label="Giallo"  onclick="pickAnchor(this)"></div>
+    <div class="abtn" data-a="red"    data-label="Rosso"   onclick="pickAnchor(this)"></div>
+    <div class="abtn" data-a="green"  data-label="Verde"   onclick="pickAnchor(this)"></div>
+    <div class="abtn" data-a="white"  data-label="Bianco"  onclick="pickAnchor(this)"></div>
   </div>
   <input id="roomIn" type="text" maxlength="8" placeholder="Codice stanza" autocomplete="off" spellcheck="false">
   <button id="joinBtn" onclick="join()">ENTRA NEL GIOCO 🐛</button>
@@ -132,16 +128,15 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
   </p>
 </div>
 
-<!-- ── GAME SCREEN ── -->
 <div id="game">
   <video id="vid" autoplay playsinline muted></video>
   <canvas id="gc"></canvas>
   <div id="hud">
     <div>Stanza: <b id="hRoom">-</b><br>Giocatori: <b id="hPl">1</b></div>
-    <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca pedine…</span></div>
+    <div style="text-align:right">Bug: <b id="hColor">-</b><br><span id="hStatus">🔍 Cerca oggetto…</span></div>
   </div>
   <div id="plist"></div>
-  <div id="calib">🎯 Inquadra le 4 <b>pedine nere</b> agli angoli del campo</div>
+  <div id="calib">📷 Punta sul <b>oggetto al centro</b> del campo</div>
   <div id="bigMsg"></div>
   <div id="joy"><div id="joyB"><div id="joyK"></div></div></div>
   <div id="dead"><h2>💀 SEI MORTO</h2><p>Hai subito un morso!</p></div>
@@ -150,163 +145,156 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 
 <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
 <script>
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  CONFIG
-// ═══════════════════════════════════
-const RELAYS      = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
-const PUB_MS      = 90;
-const COLL_PX     = 90;      // pixel screen per collisione
-const FACING_DOT  = 0.55;    // cos ~57°: angolo di "testa puntata"
-const SPD         = 2.4;
-const LERP        = 0.12;
-const BOUND       = 46;      // unità mondo max (campo = ±50, insetti non escono)
-const COLORS      = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
+// ═══════════════════════════════════════════════════
+const RELAYS     = ['https://peer.wallie.io/gun','https://gun.eco/gun'];
+const PUB_MS     = 90;
+const COLL_PX    = 90;      // px schermo per collisione
+const FACING_DOT = 0.55;    // cos ~57° — angolo "testa puntata"
+const SPD        = 2.4;
+const LERP       = 0.14;
+const BOUND      = 46;      // unità mondo max (campo = ±50)
+const ARENA_R    = 50;      // raggio campo in unità mondo
+const COLORS     = { blue:'#2255ff', red:'#ff2222', green:'#22cc44', purple:'#aa22ff' };
 
-// ═══════════════════════════════════
+// Filtri colore per oggetto ancora
+const ANCHOR_FILTERS = {
+  blue:   (r,g,b)=> b>=115 && r<=115 && g<=125 && (b-r)>=38 && (b-g)>=15,
+  orange: (r,g,b)=> r>=160 && g>=70  && g<=155 && b<=80  && r-b>=80,
+  yellow: (r,g,b)=> r>=170 && g>=160 && b<=90  && r-b>=90,
+  red:    (r,g,b)=> r>=150 && g<=90  && b<=90  && r-g>=70 && r-b>=70,
+  green:  (r,g,b)=> g>=120 && r<=110 && b<=110 && (g-r)>=35 && (g-b)>=15,
+  white:  (r,g,b)=> r>=195 && g>=195 && b>=195 && Math.max(r,g,b)-Math.min(r,g,b)<35,
+};
+
+// ═══════════════════════════════════════════════════
 //  DOM CACHE
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
-const elSetup=$('setup'), elGame=$('game'), elHRoom=$('hRoom'), elHPl=$('hPl'),
-      elHColor=$('hColor'), elHStatus=$('hStatus'), elCalib=$('calib'),
-      elBigMsg=$('bigMsg'), elPlist=$('plist'),
-      elDead=$('dead'), elWin=$('win'), elWinMsg=$('winMsg');
+const elSetup=$('setup'), elGame=$('game'),
+      elHRoom=$('hRoom'), elHPl=$('hPl'), elHColor=$('hColor'),
+      elHStatus=$('hStatus'), elCalib=$('calib'), elBigMsg=$('bigMsg'),
+      elPlist=$('plist'), elDead=$('dead'), elWin=$('win'), elWinMsg=$('winMsg');
 const vid=$('vid'), gc=$('gc'), gCtx=gc.getContext('2d');
 const detC=document.createElement('canvas');
 const detX=detC.getContext('2d',{willReadFrequently:true});
 const joyB=$('joyB'), joyK=$('joyK');
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 const myId = 'b'+Math.random().toString(36).slice(2,9);
-let myColor='blue', roomCode='', gun=null, gamePath='';
+let myColor='blue', anchorColor='blue', roomCode='', gun=null, gamePath='';
 let myX=(Math.random()-.5)*60, myY=(Math.random()-.5)*60;
 let myAngle=0, myMoving=false, alive=true, gameOn=false;
-const others={};
-// corners: [TL, TR, BR, BL] coordinate schermo (smoothed)
-let corners=null, cornersRaw=null, calibrated=false;
+const others = {};
+let anchorS=null, calibrated=false;
 let biteTarget=null, biteCooldown=0;
 let frameN=0;
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  AUDIO
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 let audioCtx=null;
-function ac() {
+function getAC() {
   if (!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
   return audioCtx;
 }
 function tone(freq,type,vol,dur,delay=0,freqEnd=null) {
-  const ctx=ac(), t0=ctx.currentTime+delay;
-  const osc=ctx.createOscillator(), gain=ctx.createGain();
+  const ctx=getAC(), t0=ctx.currentTime+delay;
+  const osc=ctx.createOscillator(), g=ctx.createGain();
   osc.type=type; osc.frequency.setValueAtTime(freq,t0);
   if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd,t0+dur);
-  gain.gain.setValueAtTime(vol,t0);
-  gain.gain.exponentialRampToValueAtTime(0.001,t0+dur);
-  osc.connect(gain); gain.connect(ctx.destination);
+  g.gain.setValueAtTime(vol,t0);
+  g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+  osc.connect(g); g.connect(ctx.destination);
   osc.start(t0); osc.stop(t0+dur+0.01);
 }
-function sndBite()   { tone(900,'sawtooth',.35,.06,0,300); tone(250,'square',.15,.12,.04); }
-function sndDeath()  { [350,240,160].forEach((f,i)=>tone(f,'sine',.3,.28,i*.14)); }
-function sndCalib()  { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
-function sndWin()    { [523,659,784,1047].forEach((f,i)=>tone(f,'sine',.22,.32,i*.13)); }
+function sndBite()  { tone(900,'sawtooth',.35,.06,0,300); tone(250,'square',.15,.12,.04); }
+function sndDeath() { [350,240,160].forEach((f,i)=>tone(f,'sine',.3,.28,i*.14)); }
+function sndCalib() { tone(660,'sine',.18,.1); tone(990,'sine',.14,.1,.11); }
+function sndWin()   { [523,659,784,1047].forEach((f,i)=>tone(f,'sine',.22,.32,i*.13)); }
 
-// ═══════════════════════════════════
-//  SETUP
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  SETUP UI
+// ═══════════════════════════════════════════════════
 function pickColor(el) {
   document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('sel'));
   el.classList.add('sel'); myColor=el.dataset.c;
 }
+function pickAnchor(el) {
+  document.querySelectorAll('.abtn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel'); anchorColor=el.dataset.a;
+}
 document.querySelector('.cbtn[data-c="blue"]').click();
+document.querySelector('.abtn[data-a="blue"]').click();
 
 function join() {
   const code=$('roomIn').value.trim().toUpperCase(), err=$('err');
   if (code.length<3) { err.textContent='Codice troppo corto (min 3 caratteri)'; return; }
   err.textContent=''; roomCode=code;
-  ac().resume();
+  getAC().resume();
   elSetup.style.display='none'; elGame.style.display='block';
   elHRoom.textContent=roomCode;
   elHColor.innerHTML=`<span style="color:${COLORS[myColor]}">${myColor}</span>`;
   startCamera(); initGun();
 }
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  CAMERA
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 async function startCamera() {
   try {
-    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:640,height:480}})
+    const s = await navigator.mediaDevices
+      .getUserMedia({video:{facingMode:'environment',width:640,height:480}})
       .catch(()=>navigator.mediaDevices.getUserMedia({video:true}));
     vid.srcObject=s;
     vid.onloadedmetadata=()=>{ detC.width=vid.videoWidth; detC.height=vid.videoHeight; resize(); gameLoop(); };
   } catch(e) { alert('Webcam non disponibile: '+e.message); }
 }
 function resize() { gc.width=window.innerWidth; gc.height=window.innerHeight; }
-window.addEventListener('resize',resize);
+window.addEventListener('resize', resize);
 
-// ═══════════════════════════════════
-//  RILEVAMENTO 4 PEDINE SCURE
-//  Una pedina per quadrante video → ordine: [TL, TR, BR, BL]
-// ═══════════════════════════════════
-function detectCorners() {
+// ═══════════════════════════════════════════════════
+//  RILEVAMENTO OGGETTO ANCORA (colore selezionato)
+// ═══════════════════════════════════════════════════
+function detectAnchor() {
   detX.drawImage(vid,0,0,detC.width,detC.height);
   const img=detX.getImageData(0,0,detC.width,detC.height).data;
-  const W=detC.width, H=detC.height, HW=W>>1, HH=H>>1;
-  // Quattro quadranti: TL TR BR BL
-  const quads=[
-    {x0:0,  x1:HW, y0:0,  y1:HH},
-    {x0:HW, x1:W,  y0:0,  y1:HH},
-    {x0:HW, x1:W,  y0:HH, y1:H },
-    {x0:0,  x1:HW, y0:HH, y1:H },
-  ];
-  const result=[];
-  for (const q of quads) {
-    let sx=0, sy=0, n=0;
-    for (let y=q.y0; y<q.y1; y+=3) for (let x=q.x0; x<q.x1; x+=3) {
-      const i=(y*W+x)*4, r=img[i], g=img[i+1], b=img[i+2];
-      if (r<70&&g<70&&b<70) { sx+=x; sy+=y; n++; }
+  const W=detC.width, H=detC.height;
+  const match=ANCHOR_FILTERS[anchorColor];
+  let sx=0,sy=0,n=0,x0=1e9,x1=-1,y0=1e9,y1=-1;
+  for (let y=0;y<H;y+=3) for (let x=0;x<W;x+=3) {
+    const i=(y*W+x)*4;
+    if (match(img[i],img[i+1],img[i+2])) {
+      sx+=x; sy+=y; n++;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
     }
-    if (n<12) return null; // pedina non trovata in questo quadrante
-    result.push({x:sx/n, y:sy/n});
   }
+  if (n<50) return null;
+  const cx=sx/n, cy=sy/n, rad=Math.max((x1-x0)/2,(y1-y0)/2,8);
   const rect=vid.getBoundingClientRect();
   const kx=rect.width/W, ky=rect.height/H;
-  return result.map(p=>({x:rect.left+p.x*kx, y:rect.top+p.y*ky}));
+  return {x:rect.left+cx*kx, y:rect.top+cy*ky, r:rad*kx};
 }
 
-// ═══════════════════════════════════
-//  COORDINATE: mondo → schermo
-//  Interpolazione bilineare nel quadrilatero
-//  World: wx,wy ∈ [-50,50]  →  u,v ∈ [0,1]
-//  Ordine corners: TL=u0v0, TR=u1v0, BR=u1v1, BL=u0v1
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  COORDINATE: mondo ↔ schermo
+// ═══════════════════════════════════════════════════
 function worldToScreen(wx,wy) {
-  if (!corners) return null;
-  const u=(wx+50)/100, v=(wy+50)/100;
-  const [TL,TR,BR,BL]=corners;
-  return {
-    x: TL.x*(1-u)*(1-v) + TR.x*u*(1-v) + BR.x*u*v + BL.x*(1-u)*v,
-    y: TL.y*(1-u)*(1-v) + TR.y*u*(1-v) + BR.y*u*v + BL.y*(1-u)*v,
-    k: arenaScale()
-  };
-}
-function arenaScale() {
-  if (!corners) return 1;
-  const [TL,TR,BR,BL]=corners;
-  const d1=Math.hypot(BR.x-TL.x,BR.y-TL.y);
-  const d2=Math.hypot(BL.x-TR.x,BL.y-TR.y);
-  return Math.max(0.3, Math.min(3, (d1+d2)/2/160));
+  if (!anchorS) return null;
+  const k=Math.max(.4,Math.min(3,anchorS.r/28));
+  return {x:anchorS.x+wx*k, y:anchorS.y+wy*k, k};
 }
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  MULTIPLAYER (Gun.js)
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 function initGun() {
   gun=Gun(RELAYS); gamePath='bw_'+roomCode;
   gun.get(gamePath).get('players').map().on((d,id)=>{
-    if (!d||id===myId) return;
-    if (Date.now()-(d.ts||0)>6000) return;
+    if (!d||id===myId||Date.now()-(d.ts||0)>6000) return;
     const wasAlive=others[id]?.alive;
     others[id]={...d};
     if (wasAlive&&!d.alive) checkWin();
@@ -356,30 +344,30 @@ function kill() {
   alive=false; sndDeath(); elDead.style.display='flex'; publishMe(); checkWin();
 }
 
-// ═══════════════════════════════════
-//  JOYSTICK
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  JOYSTICK + TASTIERA
+// ═══════════════════════════════════════════════════
 const JR=34; let jdx=0, jdy=0;
 function joyMove(e) {
   const t=e.touches?e.touches[0]:e, rc=joyB.getBoundingClientRect();
   let dx=t.clientX-(rc.left+rc.width/2), dy=t.clientY-(rc.top+rc.height/2);
-  const d=Math.hypot(dx,dy); if (d>JR) { dx=dx/d*JR; dy=dy/d*JR; }
-  joyK.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  const d=Math.hypot(dx,dy); if(d>JR){dx=dx/d*JR;dy=dy/d*JR;}
+  joyK.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
   jdx=dx/JR; jdy=dy/JR;
 }
 joyB.addEventListener('touchstart',e=>{joyMove(e);e.preventDefault();},{passive:false});
 joyB.addEventListener('touchmove', e=>{joyMove(e);e.preventDefault();},{passive:false});
-joyB.addEventListener('touchend',  ()=>{ jdx=0;jdy=0; joyK.style.transform='translate(-50%,-50%)'; });
+joyB.addEventListener('touchend',  ()=>{jdx=0;jdy=0;joyK.style.transform='translate(-50%,-50%)';});
 const keys={};
 document.addEventListener('keydown',e=>keys[e.key]=true);
 document.addEventListener('keyup',  e=>keys[e.key]=false);
 
-// ═══════════════════════════════════
-//  COLLISIONE DIREZIONALE AUTO
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  COLLISIONE DIREZIONALE AUTOMATICA
+// ═══════════════════════════════════════════════════
 function checkAutoCollisions() {
   if (biteCooldown>0) { biteCooldown--; return; }
-  if (!alive||!gameOn||!corners) return;
+  if (!alive||!gameOn||!anchorS) return;
   const ms=worldToScreen(myX,myY); if (!ms) return;
   const myFX=Math.sin(myAngle), myFY=-Math.cos(myAngle);
   Object.entries(others).forEach(([id,p])=>{
@@ -393,9 +381,33 @@ function checkAutoCollisions() {
   });
 }
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  DISEGNO ARENA
+// ═══════════════════════════════════════════════════
+function drawArena(ctx) {
+  if (!anchorS) return;
+  const k=Math.max(.4,Math.min(3,anchorS.r/28));
+  const screenR=ARENA_R*k;
+  // Cerchio campo tratteggiato
+  ctx.save();
+  ctx.strokeStyle='rgba(255,210,60,.55)'; ctx.lineWidth=2; ctx.setLineDash([12,7]);
+  ctx.beginPath(); ctx.arc(anchorS.x,anchorS.y,screenR,0,Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  // Glow centrale sull'oggetto
+  const g=ctx.createRadialGradient(anchorS.x,anchorS.y,0,anchorS.x,anchorS.y,anchorS.r*2.5);
+  g.addColorStop(0,'rgba(255,210,60,.18)'); g.addColorStop(1,'rgba(255,210,60,0)');
+  ctx.beginPath(); ctx.arc(anchorS.x,anchorS.y,anchorS.r*2.5,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+  // Croce al centro
+  ctx.strokeStyle='rgba(255,210,60,.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(anchorS.x-8,anchorS.y); ctx.lineTo(anchorS.x+8,anchorS.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(anchorS.x,anchorS.y-8); ctx.lineTo(anchorS.x,anchorS.y+8); ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════
 //  DISEGNO INSETTI
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
   const sp=worldToScreen(wx,wy); if (!sp) return;
   const {x,y,k}=sp, s=k*(isMe?1.15:.95), c=COLORS[col]||'#fff';
@@ -412,7 +424,7 @@ function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
     ctx.beginPath(); ctx.moveTo(side*5*s,ly);
     ctx.quadraticCurveTo(side*11*s,ly,side*(15+ph*4)*s,ly+8*s+Math.abs(ph)*4*s); ctx.stroke();
   }
-  // Addome
+  // Addome + strisce
   ctx.beginPath(); ctx.ellipse(0,5*s,8*s,12*s,0,0,Math.PI*2);
   ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5*s; ctx.stroke();
   for (let i=-1;i<=1;i++) {
@@ -451,71 +463,38 @@ function drawBug(ctx,wx,wy,ang,col,moving,isMe,dead) {
   ctx.globalAlpha=1; ctx.restore();
 }
 
-// Disegna il contorno del campo e i marker sulle pedine
-function drawArena(ctx) {
-  if (!corners) return;
-  const [TL,TR,BR,BL]=corners;
-  // Contorno tratteggiato
-  ctx.save();
-  ctx.strokeStyle='rgba(255,210,60,.65)'; ctx.lineWidth=2; ctx.setLineDash([10,6]);
-  ctx.beginPath(); ctx.moveTo(TL.x,TL.y); ctx.lineTo(TR.x,TR.y);
-  ctx.lineTo(BR.x,BR.y); ctx.lineTo(BL.x,BL.y); ctx.closePath(); ctx.stroke();
-  ctx.setLineDash([]);
-  // Cerchio sulle pedine
-  corners.forEach(c=>{
-    ctx.beginPath(); ctx.arc(c.x,c.y,10,0,Math.PI*2);
-    ctx.strokeStyle='rgba(255,210,60,.9)'; ctx.lineWidth=2.5; ctx.stroke();
-    ctx.beginPath(); ctx.arc(c.x,c.y,4,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,210,60,.8)'; ctx.fill();
-  });
-  ctx.restore();
-}
-
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  FLASH MESSAGGIO
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 let msgTimer=null;
 function flash(txt,ms=1600) {
   elBigMsg.textContent=txt; elBigMsg.classList.add('on');
-  clearTimeout(msgTimer);
-  msgTimer=setTimeout(()=>elBigMsg.classList.remove('on'),ms);
+  clearTimeout(msgTimer); msgTimer=setTimeout(()=>elBigMsg.classList.remove('on'),ms);
 }
 
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  GAME LOOP
-// ═══════════════════════════════════
+// ═══════════════════════════════════════════════════
 function gameLoop() {
   frameN++;
   if (gc.width!==window.innerWidth||gc.height!==window.innerHeight) resize();
 
-  // Rilevamento pedine ogni 3 frame
-  if (frameN%3===0) {
-    const raw=detectCorners();
-    if (raw) {
-      // Smooth lerp su ogni angolo
-      if (!corners) {
-        corners=[...raw]; cornersRaw=raw;
-      } else {
-        for (let i=0;i<4;i++) {
-          corners[i]={
-            x:corners[i].x+(raw[i].x-corners[i].x)*LERP,
-            y:corners[i].y+(raw[i].y-corners[i].y)*LERP
-          };
-        }
-      }
-      if (!calibrated) {
-        calibrated=true; sndCalib();
-        elCalib.style.display='none';
-        elHStatus.textContent='✅ Campo rilevato!';
-      }
+  // Rilevamento oggetto ancora (ogni 2 frame)
+  if (frameN%2===0) {
+    const det=detectAnchor();
+    if (det) {
+      anchorS=anchorS
+        ? {x:anchorS.x+(det.x-anchorS.x)*LERP, y:anchorS.y+(det.y-anchorS.y)*LERP, r:anchorS.r+(det.r-anchorS.r)*LERP}
+        : {...det};
+      if (!calibrated) { calibrated=true; sndCalib(); elCalib.style.display='none'; elHStatus.textContent='✅ Centro agganciato!'; }
     } else {
       if (calibrated) elCalib.style.display='block';
-      if (!corners) elHStatus.textContent='🔍 Cerca 4 pedine nere…';
+      if (!anchorS) elHStatus.textContent='🔍 Cerca oggetto…';
       calibrated=false;
     }
   }
 
-  // Movimento + boundary enforcement
+  // Movimento + boundary circolare
   if (alive&&gameOn) {
     let dx=jdx, dy=jdy;
     if (keys['ArrowLeft']||keys['a']) dx-=1;
@@ -525,24 +504,19 @@ function gameLoop() {
     const len=Math.hypot(dx,dy);
     if (len>.01) {
       myX+=dx/len*SPD; myY+=dy/len*SPD; myAngle=Math.atan2(dx,-dy); myMoving=true;
-      // Clamp entro il campo
-      myX=Math.max(-BOUND,Math.min(BOUND,myX));
-      myY=Math.max(-BOUND,Math.min(BOUND,myY));
+      // Clamp entro il cerchio del campo
+      const d=Math.hypot(myX,myY);
+      if (d>BOUND) { myX=myX/d*BOUND; myY=myY/d*BOUND; }
     } else myMoving=false;
   }
 
   // Rendering
   gCtx.clearRect(0,0,gc.width,gc.height);
   drawArena(gCtx);
-
-  if (corners) {
-    // Altri giocatori
+  if (anchorS) {
     Object.values(others).forEach(p=>{ if(p.color) drawBug(gCtx,p.x||0,p.y||0,p.angle||0,p.color,false,false,!p.alive); });
-    // Il mio insetto
     drawBug(gCtx,myX,myY,myAngle,myColor,myMoving,true,!alive);
   }
-
-  // Collisioni direzionali automatiche
   checkAutoCollisions();
 
   requestAnimationFrame(gameLoop);
