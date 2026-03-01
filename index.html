@@ -47,8 +47,8 @@ body { background:#000; font-family:sans-serif; overflow:hidden; touch-action:no
 
 /* ── GAME ── */
 #game { position:fixed; inset:0; display:none; }
-#vid { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
-#gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; transform:scaleX(-1); }
+#vid { width:100%; height:100%; object-fit:cover; display:block; }
+#gc  { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
 /* HUD top */
 #hud {
@@ -406,7 +406,7 @@ function kill(by) {
 function worldToScreen(wx, wy) {
   if (!anchorS) return null;
   const k = Math.max(.4, Math.min(2.8, anchorS.r/28));
-  return { x: anchorS.x - wx*k, y: anchorS.y + wy*k, k };
+  return { x: anchorS.x + wx*k, y: anchorS.y + wy*k, k };
 }
 
 function drawBug(ctx, wx, wy, ang, col, moving, isMe, dead) {
@@ -479,17 +479,14 @@ function drawBug(ctx, wx, wy, ang, col, moving, isMe, dead) {
     ctx.fillStyle=c; ctx.fill();
   });
 
-  // Name tag (counter-mirror: canvas è scaleX(-1), il testo va rispecchiato)
+  // Name tag
   if (isMe) {
     ctx.rotate(-ang);
-    ctx.save();
-    ctx.scale(-1,1);
     ctx.font = `bold ${Math.round(11*k)}px sans-serif`;
     ctx.textAlign='center';
     ctx.fillStyle='#fff'; ctx.shadowColor='#000'; ctx.shadowBlur=4;
     ctx.fillText('TU', 0, -34*s);
     ctx.shadowBlur=0;
-    ctx.restore();
   }
 
   ctx.globalAlpha=1;
